@@ -99,7 +99,6 @@ function init() {
     renderDashboard();
     renderDashboard();
     initGreeting(); // Initialize Greeting
-    initPreMarketChecklist(); // Initialize Pre-Market Checklist
     initAICoach(); // Initialize AI Coach
     initTooltips(); // Initialize Tooltips
     initKeyboardShortcuts();
@@ -3156,104 +3155,7 @@ window.addEventListener('resize', () => {
     if (streakChart) streakChart.resize();
 });
 
-// ========== PRE-MARKET CHECKLIST FUNCTIONS ==========
 
-let preMarketItems = [
-    { id: 'news', text: 'Check Economic Calendar (News)', checked: false },
-    { id: 'plan', text: 'Review Trading Plan', checked: false },
-    { id: 'mindset', text: 'Mindset Check (Am I calm?)', checked: false }
-];
-
-function initPreMarketChecklist() {
-    renderPreMarketChecklist();
-}
-
-function openPreMarketModal() {
-    document.getElementById('preMarketModal').style.display = 'block';
-    renderPreMarketChecklist();
-}
-
-function closePreMarketModal() {
-    document.getElementById('preMarketModal').style.display = 'none';
-}
-
-function renderPreMarketChecklist() {
-    const container = document.getElementById('preMarketChecklistContainer');
-    if (!container) return;
-    container.innerHTML = '';
-
-    preMarketItems.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = `checklist-item-row ${item.checked ? 'checked' : ''}`;
-        div.onclick = (e) => {
-            if (e.target.type !== 'checkbox') {
-                toggleChecklistItem(index);
-            }
-        };
-
-        div.innerHTML = `
-            <input type="checkbox" class="checklist-chk" ${item.checked ? 'checked' : ''} onchange="toggleChecklistItem(${index})">
-            <span style="flex: 1;">${item.text}</span>
-            ${index > 2 ? `<button class="btn-icon" onclick="removeChecklistItem(${index}, event)"><i data-lucide="trash-2" style="width:14px; height:14px; color:var(--text-muted);"></i></button>` : ''}
-        `;
-        container.appendChild(div);
-    });
-
-    // We don't call createIcons here to avoid flashing, but if needed we can
-    // lucide.createIcons();
-    const TrashIcons = container.querySelectorAll('.btn-icon i');
-    if (TrashIcons.length > 0) lucide.createIcons();
-
-    updateStartButtonState();
-}
-
-function toggleChecklistItem(index) {
-    preMarketItems[index].checked = !preMarketItems[index].checked;
-    renderPreMarketChecklist();
-}
-
-function addCustomChecklistItem() {
-    const input = document.getElementById('newChecklistItem');
-    const text = input.value.trim();
-    if (text) {
-        preMarketItems.push({ id: `custom-${Date.now()}`, text: text, checked: false });
-        input.value = '';
-        renderPreMarketChecklist();
-    }
-}
-
-function removeChecklistItem(index, event) {
-    event.stopPropagation(); // Prevent toggling
-    preMarketItems.splice(index, 1);
-    renderPreMarketChecklist();
-}
-
-function updateStartButtonState() {
-    const allChecked = preMarketItems.every(i => i.checked);
-    const btn = document.getElementById('startSessionBtn');
-    if (btn) btn.disabled = !allChecked;
-}
-
-function completePreMarketRoutine() {
-    // Award Bonus
-    const todayStr = new Date().toISOString().split('T')[0];
-    const lastRoutineDate = localStorage.getItem('lastPreMarketRoutineDate');
-
-    if (lastRoutineDate !== todayStr) {
-        // Award points
-        localStorage.setItem('lastPreMarketRoutineDate', todayStr);
-        localStorage.setItem('preMarketBonus', 'true');
-
-        showToast('✅ Session Started! +5 Discipline Points');
-
-        // Trigger dashboard update to reflect score
-        renderDashboard();
-    } else {
-        showToast('ℹ️ Session Started');
-    }
-
-    closePreMarketModal();
-}
 
 // ===== BACKTEST MODE FUNCTIONS =====
 
