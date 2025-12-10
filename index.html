@@ -114,9 +114,6 @@
                 <button class="sidebar-action-btn" onclick="toggleSidebar(); openAddTradeModal()">
                     <i data-lucide="plus-circle" style="color: var(--success);"></i> Add Trade
                 </button>
-                <button class="sidebar-action-btn" onclick="toggleSidebar(); openPreMarketRoutine()">
-                    <i data-lucide="clipboard-list" style="color: var(--accent-primary);"></i> Daily Routine
-                </button>
                 <button class="sidebar-action-btn" onclick="toggleSidebar(); openPremiumModal()"
                     style="border-color: #f59e0b; color: #f59e0b; background: rgba(245, 158, 11, 0.1);">
                     <i data-lucide="crown"></i> Premium Modules
@@ -254,22 +251,6 @@
                     </div>
                 </div>
 
-                <!-- Pre-Market Routine Button -->
-                <div class="card"
-                    style="background: linear-gradient(135deg, var(--accent-primary) 0%, #0284c7 100%); border: none; cursor: pointer; transition: all 0.3s;"
-                    onclick="openPreMarketRoutine()">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <div style="font-size: 2.5rem;">📋</div>
-                            <div>
-                                <h3 style="color: white; margin: 0; font-size: 1.125rem;">Pre-Market Routine</h3>
-                                <p style="color: rgba(255,255,255,0.8); margin: 0.25rem 0 0 0; font-size: 0.875rem;">
-                                    Complete your daily trading checklist</p>
-                            </div>
-                        </div>
-                        <i data-lucide="chevron-right" style="color: white; width: 32px; height: 32px;"></i>
-                    </div>
-                </div>
 
                 <!-- Risk Exposure Monitor -->
                 <div class="card" id="riskMonitorCard">
@@ -941,10 +922,6 @@
                 <i data-lucide="layout-dashboard" class="nav-icon"></i>
                 <span>Dashboard</span>
             </button>
-            <button class="nav-item" data-tab="aicoach" onclick="switchTab('aicoach')">
-                <i data-lucide="bot" class="nav-icon"></i>
-                <span>AI Coach</span>
-            </button>
             <button class="nav-item" data-tab="backtest" onclick="switchTab('backtest')">
                 <i data-lucide="history" class="nav-icon"></i>
                 <span>Backtest</span>
@@ -956,10 +933,6 @@
             <button class="nav-item" data-tab="journal" onclick="switchTab('journal')">
                 <i data-lucide="book-text" class="nav-icon"></i>
                 <span>Jurnal</span>
-            </button>
-            <button class="nav-item" data-tab="analytics" onclick="switchTab('analytics')">
-                <i data-lucide="bar-chart-3" class="nav-icon"></i>
-                <span>Analitik</span>
             </button>
         </div>
     </nav>
@@ -1049,15 +1022,7 @@
                 </button>
             </div>
         </div>
-        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--border);">
-            <h4 style="color: var(--danger); margin-bottom: 0.5rem; font-size: 0.9rem;">🚫 Danger Zone</h4>
-            <button class="btn btn-outline btn-danger" onclick="resetAllData()"
-                style="width: 100%; border: 1px solid var(--danger); color: var(--danger); background: transparent;">
-                <i data-lucide="trash-2"></i> Reset All Data
-            </button>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Menghapus semua jurnal &
-                strategi secara permanen.</p>
-        </div>
+
     </div>
     </div>
     </div>
@@ -1225,6 +1190,10 @@
             <div class="nav-icon"><i data-lucide="layout-dashboard"></i></div>
             <span>Home</span>
         </button>
+        <button class="nav-item" data-tab="backtest" onclick="switchTab('backtest')">
+            <div class="nav-icon"><i data-lucide="history"></i></div>
+            <span>Backtest</span>
+        </button>
         <button class="nav-item" data-tab="calculator" onclick="switchTab('calculator')">
             <div class="nav-icon"><i data-lucide="calculator"></i></div>
             <span>Calc</span>
@@ -1265,138 +1234,6 @@
         });
     </script>
 
-    <!-- Pre-Market Routine Modal -->
-    <div id="preMarketModal" class="modal">
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="modal-header"
-                style="background: linear-gradient(135deg, var(--accent-primary) 0%, #0284c7 100%); color: white; border-radius: 1rem 1rem 0 0; margin: -1.5rem -1.5rem 1.5rem -1.5rem; padding: 1.5rem;">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div style="font-size: 2.5rem;">📋</div>
-                    <div>
-                        <h3 style="margin: 0; font-size: 1.5rem;">Pre-Market Routine</h3>
-                        <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; opacity: 0.9;">Complete your daily trading
-                            checklist</p>
-                    </div>
-                </div>
-                <button class="modal-close" onclick="closePreMarketRoutine()" style="color: white;">×</button>
-            </div>
-            <div class="modal-body">
-                <!-- Progress Bar -->
-                <div
-                    style="background: var(--bg-tertiary); border-radius: 999px; height: 8px; margin-bottom: 1.5rem; overflow: hidden;">
-                    <div id="routineProgress"
-                        style="height: 100%; background: linear-gradient(90deg, var(--accent-primary), var(--success)); width: 0%; transition: width 0.3s;">
-                    </div>
-                </div>
-
-                <div id="routineProgressText"
-                    style="text-align: center; margin-bottom: 1.5rem; font-weight: 600; color: var(--text-secondary);">
-                    0 / 8 Completed
-                </div>
-
-                <!-- Checklist Items -->
-                <div class="routine-checklist">
-                    <label class="routine-item">
-                        <input type="checkbox" onchange="updateRoutineProgress()">
-                        <div class="routine-content">
-                            <div class="routine-icon">📊</div>
-                            <div>
-                                <div class="routine-title">Review Market News & Economic Calendar</div>
-                                <div class="routine-desc">Check major news events and economic data releases</div>
-                            </div>
-                        </div>
-                    </label>
-
-                    <label class="routine-item">
-                        <input type="checkbox" onchange="updateRoutineProgress()">
-                        <div class="routine-content">
-                            <div class="routine-icon">📈</div>
-                            <div>
-                                <div class="routine-title">Analyze Key Support & Resistance Levels</div>
-                                <div class="routine-desc">Mark important price levels on your charts</div>
-                            </div>
-                        </div>
-                    </label>
-
-                    <label class="routine-item">
-                        <input type="checkbox" onchange="updateRoutineProgress()">
-                        <div class="routine-content">
-                            <div class="routine-icon">🎯</div>
-                            <div>
-                                <div class="routine-title">Set Daily Risk Limit</div>
-                                <div class="routine-desc">Define maximum loss you're willing to accept today</div>
-                            </div>
-                        </div>
-                    </label>
-
-                    <label class="routine-item">
-                        <input type="checkbox" onchange="updateRoutineProgress()">
-                        <div class="routine-content">
-                            <div class="routine-icon">📝</div>
-                            <div>
-                                <div class="routine-title">Review Trading Plan & Strategy</div>
-                                <div class="routine-desc">Refresh your strategy rules and entry criteria</div>
-                            </div>
-                        </div>
-                    </label>
-
-                    <label class="routine-item">
-                        <input type="checkbox" onchange="updateRoutineProgress()">
-                        <div class="routine-content">
-                            <div class="routine-icon">💰</div>
-                            <div>
-                                <div class="routine-title">Check Account Balance & Available Margin</div>
-                                <div class="routine-desc">Verify your account status and buying power</div>
-                            </div>
-                        </div>
-                    </label>
-
-                    <label class="routine-item">
-                        <input type="checkbox" onchange="updateRoutineProgress()">
-                        <div class="routine-content">
-                            <div class="routine-icon">🧘</div>
-                            <div>
-                                <div class="routine-title">Mental Preparation & Mindset Check</div>
-                                <div class="routine-desc">Ensure you're calm, focused, and emotionally ready</div>
-                            </div>
-                        </div>
-                    </label>
-
-                    <label class="routine-item">
-                        <input type="checkbox" onchange="updateRoutineProgress()">
-                        <div class="routine-content">
-                            <div class="routine-icon">⏰</div>
-                            <div>
-                                <div class="routine-title">Set Trading Session Time Limits</div>
-                                <div class="routine-desc">Define when you'll start and stop trading</div>
-                            </div>
-                        </div>
-                    </label>
-
-                    <label class="routine-item">
-                        <input type="checkbox" onchange="updateRoutineProgress()">
-                        <div class="routine-content">
-                            <div class="routine-icon">✅</div>
-                            <div>
-                                <div class="routine-title">Review Yesterday's Trades & Lessons</div>
-                                <div class="routine-desc">Learn from previous trades and mistakes</div>
-                            </div>
-                        </div>
-                    </label>
-                </div>
-
-                <!-- Action Buttons -->
-                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
-                    <button class="btn btn-secondary" onclick="resetRoutine()" style="flex: 1;">
-                        <i data-lucide="refresh-cw"></i> Reset
-                    </button>
-                    <button class="btn btn-primary" onclick="completeRoutine()" style="flex: 2;">
-                        <i data-lucide="check-circle"></i> Start Trading Session
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
 
     <!-- Premium Modal -->
