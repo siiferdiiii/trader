@@ -465,40 +465,109 @@
 
             <!-- Tab: Backtest -->
             <div id="backtest" class="tab-pane">
-                <!-- Backtest Header -->
+                <!-- Strategy Performance Card -->
                 <div class="card"
-                    style="background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%); border-left: 4px solid var(--warning);">
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                        <div style="font-size: 3rem;">🔄</div>
-                        <div>
-                            <h2 style="font-size: 1.5rem; margin-bottom: 0.25rem;">Backtest Mode</h2>
-                            <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Input historical trade
-                                data
-                                untuk test strategi Anda</p>
+                    style="background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%); border-left: 4px solid var(--accent-primary);">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="font-size: 2.5rem;">📊</div>
+                            <div>
+                                <h2 style="font-size: 1.25rem; margin-bottom: 0.25rem;">Strategy Performance</h2>
+                                <select class="form-select" id="bt-selected-strategy"
+                                    onchange="updateStrategyPerformance()" style="width: 250px; margin-top: 0.5rem;">
+                                    <option value="all">All Strategies</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="badge"
+                            style="background: var(--accent-primary); color: white; padding: 0.5rem 1rem;">
+                            🔄 Backtest Mode
                         </div>
                     </div>
-                    <div class="badge" style="background: var(--warning); color: white; display: inline-block;">
-                        📊 Data backtest terpisah dari live trading
+
+                    <!-- Performance Metrics Grid -->
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                        <div
+                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--accent-primary);">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Total
+                                Trades</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);"
+                                id="sp-total-trades">0</div>
+                        </div>
+                        <div
+                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--success);">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Win Rate
+                            </div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);" id="sp-win-rate">0%
+                            </div>
+                        </div>
+                        <div
+                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--danger);">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Max Lose
+                                Streak</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--danger);" id="sp-lose-streak">
+                                0</div>
+                        </div>
+                        <div
+                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--success);">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Max Win
+                                Streak</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);" id="sp-win-streak">
+                                0</div>
+                        </div>
+                        <div
+                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--warning);">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Drawdown
+                            </div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);" id="sp-drawdown">0%
+                            </div>
+                        </div>
+                        <div
+                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--accent-primary);">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Avg R:R
+                            </div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-primary);"
+                                id="sp-avg-rr">0</div>
+                        </div>
+                        <div
+                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--success); grid-column: span 2;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Total P&L
+                            </div>
+                            <div style="display: flex; align-items: baseline; gap: 0.5rem;">
+                                <div style="font-size: 1.75rem; font-weight: 700;" id="sp-pnl-amount">$0</div>
+                                <div style="font-size: 1rem; font-weight: 600; color: var(--text-muted);"
+                                    id="sp-pnl-percent">(0%)</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Backtest Summary Cards -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" id="backtest-totalTrades">0</div>
-                        <div class="stat-label">Backtest Trades</div>
+                <!-- Backtest Settings (One-time Setup) -->
+                <div class="card"
+                    style="background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%); border-left: 3px solid var(--warning);">
+                    <div class="card-header">
+                        <h2 class="card-title"><i data-lucide="settings"></i> Backtest Settings</h2>
+                        <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">Isi sekali saja, data akan
+                            disimpan otomatis</p>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="backtest-winRate">0%</div>
-                        <div class="stat-label">Win Rate</div>
+                    <div class="form-group">
+                        <label class="form-label">💰 Saldo Trading ($)</label>
+                        <input type="number" class="form-input" id="bt-balance" placeholder="10000"
+                            oninput="saveBacktestSettings()">
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="backtest-netPnL">$0</div>
-                        <div class="stat-label">Net P&L</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="backtest-avgRR">0</div>
-                        <div class="stat-label">Avg R:R</div>
+                    <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div class="form-group">
+                            <label class="form-label">⚠️ Risk per Trade (%)</label>
+                            <input type="number" class="form-input" id="bt-risk-percent" placeholder="1" step="0.1"
+                                oninput="saveBacktestSettings()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">🎯 R:R Target</label>
+                            <input type="number" class="form-input" id="bt-rr-target" placeholder="2" step="0.1"
+                                oninput="saveBacktestSettings()">
+                        </div>
                     </div>
                 </div>
 
@@ -514,128 +583,111 @@
                     <div id="backtestFormContainer">
                         <!-- Single Entry Form -->
                         <div class="backtest-form" id="singleEntryForm">
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label class="form-label">📅 Trade Date</label>
-                                    <input type="datetime-local" class="form-input" id="bt-date">
+                            <!-- Quick Entry Section (Always Visible) -->
+                            <div class="backtest-quick-entry">
+                                <!-- Row 1: Date + Asset -->
+                                <div class="form-grid"
+                                    style="grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                                    <div class="form-group">
+                                        <label class="form-label">📅 Trade Date</label>
+                                        <input type="date" class="form-input" id="bt-date">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">💱 Asset/Pair</label>
+                                        <input type="text" class="form-input" id="bt-asset"
+                                            placeholder="EUR/USD, BTC/USDT">
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">📋 Strategy</label>
-                                    <select class="form-select" id="bt-strategy">
-                                        <option value="">-- Pilih Strategi --</option>
-                                    </select>
-                                </div>
-                            </div>
 
-                            <div class="mode-toggle" style="margin-bottom: 1rem;">
-                                <button class="mode-btn active"
-                                    onclick="switchBacktestMode('forex', this)">FOREX</button>
-                                <button class="mode-btn" onclick="switchBacktestMode('crypto', this)">CRYPTO
-                                    FUTURES</button>
-                            </div>
+                                <!-- Row 2: Entry + SL -->
+                                <div class="form-grid"
+                                    style="grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                                    <div class="form-group">
+                                        <label class="form-label">📈 Entry Price</label>
+                                        <input type="number" class="form-input" id="bt-entry" placeholder="0.00000"
+                                            step="any" oninput="calculateBacktestRR()">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">🛑 Stop Loss</label>
+                                        <input type="number" class="form-input" id="bt-sl" placeholder="0.00000"
+                                            step="any" oninput="calculateBacktestRR()">
+                                    </div>
+                                </div>
 
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label class="form-label">💱 Asset/Pair</label>
-                                    <input type="text" class="form-input" id="bt-asset"
-                                        placeholder="e.g., EUR/USD or BTC/USDT">
-                                </div>
-                                <div class="form-group" id="bt-leverage-group" style="display: none;">
-                                    <label class="form-label">⚡ Leverage</label>
-                                    <input type="number" class="form-input" id="bt-leverage" placeholder="10" value="1">
-                                </div>
-                            </div>
-
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label class="form-label">📈 Entry Price</label>
-                                    <input type="number" class="form-input" id="bt-entry" placeholder="0.00000"
-                                        step="any" oninput="calculateBacktestRR()">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">🛑 Stop Loss</label>
-                                    <input type="number" class="form-input" id="bt-sl" placeholder="0.00000" step="any"
-                                        oninput="calculateBacktestRR()">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">🎯 Take Profit</label>
-                                    <input type="number" class="form-input" id="bt-tp" placeholder="0.00000" step="any"
-                                        oninput="calculateBacktestRR()">
-                                </div>
-                            </div>
-
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label class="form-label">🎯 Direction</label>
-                                    <select class="form-select" id="bt-direction">
-                                        <option value="">Auto Detect</option>
-                                        <option value="LONG">LONG</option>
-                                        <option value="SHORT">SHORT</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">⚖️ Risk:Reward</label>
-                                    <input type="text" class="form-input" id="bt-rr" placeholder="Auto" readonly
-                                        style="background: var(--bg-primary);">
-                                </div>
-                            </div>
-
-                            <div class="form-grid">
+                                <!-- Row 3: Result -->
                                 <div class="form-group">
                                     <label class="form-label">📊 Result</label>
                                     <select class="form-select" id="bt-result">
-                                        <option value="PENDING">PENDING</option>
-                                        <option value="TP HIT">TP HIT</option>
-                                        <option value="SL HIT">SL HIT</option>
-                                        <option value="WIN">WIN (Manual Close)</option>
-                                        <option value="LOSS">LOSS (Manual Close)</option>
+                                        <option value="TP HIT">TP HIT ✅</option>
+                                        <option value="SL HIT">SL HIT ❌</option>
+                                        <option value="WIN">WIN (Manual)</option>
+                                        <option value="LOSS">LOSS (Manual)</option>
                                         <option value="BREAKEVEN">BREAKEVEN</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <!-- Optional Fields (Collapsible) -->
+                            <button type="button" class="btn-collapse" onclick="toggleOptionalFields()">
+                                <i data-lucide="chevron-down"></i> More Details (Optional)
+                            </button>
+
+                            <div id="optionalFields" class="optional-fields" style="display: none;">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="form-label">🎯 Take Profit (Optional)</label>
+                                        <input type="number" class="form-input" id="bt-tp" placeholder="0.00000"
+                                            step="any" oninput="calculateBacktestRR()">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">⚡ Leverage (Crypto)</label>
+                                        <input type="number" class="form-input" id="bt-leverage" placeholder="10"
+                                            value="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">⚖️ Risk:Reward</label>
+                                        <input type="text" class="form-input" id="bt-rr" placeholder="Auto" readonly
+                                            style="background: var(--bg-primary);">
+                                    </div>
+                                </div>
+
                                 <div class="form-group">
-                                    <label class="form-label">💰 Realized P&L ($)</label>
-                                    <input type="number" class="form-input" id="bt-pnl" placeholder="0.00" step="0.01">
+                                    <label class="form-label">😊 Emotion</label>
+                                    <div class="emotion-buttons"
+                                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.5rem;">
+                                        <button type="button" class="emotion-btn"
+                                            onclick="selectEmotion('confident', this)">😎
+                                            Confident</button>
+                                        <button type="button" class="emotion-btn"
+                                            onclick="selectEmotion('calm', this)">😌
+                                            Calm</button>
+                                        <button type="button" class="emotion-btn active"
+                                            onclick="selectEmotion('neutral', this)">😐 Neutral</button>
+                                        <button type="button" class="emotion-btn"
+                                            onclick="selectEmotion('excited', this)">🤩
+                                            Excited</button>
+                                        <button type="button" class="emotion-btn"
+                                            onclick="selectEmotion('anxious', this)">😰
+                                            Anxious</button>
+                                        <button type="button" class="emotion-btn"
+                                            onclick="selectEmotion('fearful', this)">😨
+                                            Fearful</button>
+                                    </div>
+                                    <input type="hidden" id="bt-emotion" value="neutral">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">📝 Notes (Optional)</label>
+                                    <textarea class="form-input" id="bt-notes" rows="2"
+                                        placeholder="Market condition, entry reason..."></textarea>
                                 </div>
                             </div>
 
-                            <div class="form-group">
-                                <label class="form-label">😊 Emotion</label>
-                                <div class="emotion-buttons"
-                                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem;">
-                                    <button type="button" class="emotion-btn"
-                                        onclick="selectEmotion('confident', this)">😎
-                                        Confident</button>
-                                    <button type="button" class="emotion-btn" onclick="selectEmotion('calm', this)">😌
-                                        Calm</button>
-                                    <button type="button" class="emotion-btn active"
-                                        onclick="selectEmotion('neutral', this)">😐 Neutral</button>
-                                    <button type="button" class="emotion-btn"
-                                        onclick="selectEmotion('excited', this)">🤩
-                                        Excited</button>
-                                    <button type="button" class="emotion-btn"
-                                        onclick="selectEmotion('anxious', this)">😰
-                                        Anxious</button>
-                                    <button type="button" class="emotion-btn"
-                                        onclick="selectEmotion('fearful', this)">😨
-                                        Fearful</button>
-                                    <button type="button" class="emotion-btn"
-                                        onclick="selectEmotion('frustrated', this)">😤
-                                        Frustrated</button>
-                                    <button type="button" class="emotion-btn" onclick="selectEmotion('greedy', this)">🤑
-                                        Greedy</button>
-                                    <button type="button" class="emotion-btn" onclick="selectEmotion('fomo', this)">😱
-                                        FOMO</button>
-                                </div>
-                                <input type="hidden" id="bt-emotion" value="neutral">
-                            </div>
+                            <!-- Hidden fields for auto-detected values -->
+                            <input type="hidden" id="bt-mode" value="forex">
+                            <input type="hidden" id="bt-direction" value="">
 
-                            <div class="form-group">
-                                <label class="form-label">📝 Notes (Optional)</label>
-                                <textarea class="form-input" id="bt-notes" rows="2"
-                                    placeholder="Screenshot, market condition, entry reason..."></textarea>
-                            </div>
-
-                            <div style="display: flex; gap: 0.5rem;">
+                            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
                                 <button class="btn btn-primary" onclick="saveBacktestTrade()" style="flex: 1;">
                                     <i data-lucide="check-circle"></i> Add Trade
                                 </button>
@@ -684,14 +736,7 @@
                     <!-- Balance & Risk Row - Combined for minimalist UI -->
                     <div class="form-grid form-row-responsive">
                         <div class="form-group">
-                            <label class="form-label">
-                                Saldo Akun (USD/USDT)
-                                <button onclick="updateBalanceFromJournal()" class="btn-icon"
-                                    style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; background: var(--accent-primary); color: white; border-radius: 0.25rem;"
-                                    title="Auto-update from journal">
-                                    <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i> Auto
-                                </button>
-                            </label>
+                            <label class="form-label">Saldo Akun (USD/USDT)</label>
                             <input type="number" class="form-input" id="balance" placeholder="10000"
                                 oninput="calculate()">
                         </div>
