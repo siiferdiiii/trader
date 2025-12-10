@@ -2343,7 +2343,30 @@ function populateStrategySelector() {
 
 // Chart Analysis Functions
 function openChartAnalysis() {
-    document.getElementById('chartImageInput').click();
+    // Show requirements modal first
+    const modal = document.getElementById('chartRequirementsModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
+
+function closeChartRequirementsModal() {
+    const modal = document.getElementById('chartRequirementsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function proceedToUploadChart() {
+    // Close modal
+    closeChartRequirementsModal();
+
+    // Trigger file input
+    const fileInput = document.getElementById('chartImageInput');
+    if (fileInput) {
+        fileInput.click();
+    }
 }
 
 let currentChartImage = null;
