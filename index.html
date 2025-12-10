@@ -1329,6 +1329,116 @@
             </div>
         </div>
     </div>
+
+    <!-- Chart Requirements Modal -->
+    <div id="chartRequirementsModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 style="display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+                    <i data-lucide="list-checks"></i>
+                    Chart Requirements
+                </h2>
+                <button class="btn-icon" onclick="closeChartRequirementsModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div
+                    style="background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                    <p style="color: white; margin: 0; font-size: 0.875rem; line-height: 1.6;">
+                        <strong>📊 Untuk analisa AI yang akurat,</strong> pastikan chart Anda sudah memiliki indikator
+                        berikut:
+                    </p>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- RSI Indicator -->
+                    <div
+                        style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--accent-primary);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <div
+                                style="width: 24px; height: 24px; background: var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.75rem;">
+                                1</div>
+                            <h3 style="margin: 0; font-size: 1rem;">RSI (Relative Strength Index)</h3>
+                        </div>
+                        <div style="margin-left: 2rem;">
+                            <p style="margin: 0 0 0.5rem 0; color: var(--text-muted); font-size: 0.875rem;">Settings:
+                            </p>
+                            <ul
+                                style="margin: 0; padding-left: 1.25rem; color: var(--text-secondary); font-size: 0.875rem;">
+                                <li><strong>Period:</strong> 14</li>
+                                <li><strong>Overbought:</strong> 70</li>
+                                <li><strong>Oversold:</strong> 30</li>
+                                <li><strong>Display:</strong> Separate panel di bawah chart</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- EMA 20 -->
+                    <div
+                        style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <div
+                                style="width: 24px; height: 24px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.75rem;">
+                                2</div>
+                            <h3 style="margin: 0; font-size: 1rem;">EMA 20 (Fast Moving Average)</h3>
+                        </div>
+                        <div style="margin-left: 2rem;">
+                            <p style="margin: 0 0 0.5rem 0; color: var(--text-muted); font-size: 0.875rem;">Settings:
+                            </p>
+                            <ul
+                                style="margin: 0; padding-left: 1.25rem; color: var(--text-secondary); font-size: 0.875rem;">
+                                <li><strong>Type:</strong> Exponential Moving Average</li>
+                                <li><strong>Period:</strong> 20</li>
+                                <li><strong>Color:</strong> Blue atau warna terang</li>
+                                <li><strong>Display:</strong> Overlay di chart utama</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- EMA 50 -->
+                    <div
+                        style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid var(--warning);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <div
+                                style="width: 24px; height: 24px; background: var(--warning); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.75rem;">
+                                3</div>
+                            <h3 style="margin: 0; font-size: 1rem;">EMA 50 (Slow Moving Average)</h3>
+                        </div>
+                        <div style="margin-left: 2rem;">
+                            <p style="margin: 0 0 0.5rem 0; color: var(--text-muted); font-size: 0.875rem;">Settings:
+                            </p>
+                            <ul
+                                style="margin: 0; padding-left: 1.25rem; color: var(--text-secondary); font-size: 0.875rem;">
+                                <li><strong>Type:</strong> Exponential Moving Average</li>
+                                <li><strong>Period:</strong> 50</li>
+                                <li><strong>Color:</strong> Red atau warna gelap</li>
+                                <li><strong>Display:</strong> Overlay di chart utama</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    style="background: var(--bg-tertiary); padding: 1rem; border-radius: 0.5rem; margin-top: 1.5rem; border-left: 3px solid var(--info);">
+                    <p style="margin: 0; font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6;">
+                        <strong>💡 Tips:</strong> Pastikan semua indikator terlihat jelas di screenshot. Gunakan
+                        timeframe H1 atau H4 untuk analisa yang lebih akurat.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeChartRequirementsModal()">
+                    <i data-lucide="x"></i> Cancel
+                </button>
+                <button class="btn btn-primary" onclick="proceedToUploadChart()">
+                    <i data-lucide="upload"></i> Upload Chart
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=20251209"></script>
 </body>
 
 </html>
