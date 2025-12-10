@@ -322,6 +322,14 @@ function switchTab(tabName) {
     }
 
 
+
+    // Hide Bottom Nav on AI Coach (Mobile optimization)
+    if (tabName === 'aicoach') {
+        document.body.classList.add('hide-bottom-nav');
+    } else {
+        document.body.classList.remove('hide-bottom-nav');
+    }
+
     if (tabName === 'analytics') {
         setTimeout(() => updateAnalytics(), 100);
     }
