@@ -1,13 +1,13 @@
 // Trading Manager Pro - Service Worker
-// Version 1.0.0
+// Version 1.0.2
 
-const CACHE_NAME = 'trading-manager-v1';
+const CACHE_NAME = 'trading-manager-v3';
 const urlsToCache = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/script.js',
-    '/manifest.json',
+    '/trader/',
+    '/trader/index.html',
+    '/trader/style.css',
+    '/trader/script.js',
+    '/trader/manifest.json',
     // External CDN resources
     'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
     'https://unpkg.com/lucide@latest',
@@ -82,7 +82,7 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 }).catch(() => {
                     // Network failed, try to return cached version
-                    return caches.match('/index.html');
+                    return caches.match('/trader/index.html');
                 });
             })
     );
