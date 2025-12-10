@@ -320,8 +320,6 @@ function switchTab(tabName) {
         document.querySelector('.sidebar-overlay').classList.remove('active');
     }
 
-
-
     // Hide Bottom Nav on AI Coach (Mobile optimization)
     if (tabName === 'aicoach') {
         document.body.classList.add('hide-bottom-nav');
@@ -329,6 +327,17 @@ function switchTab(tabName) {
         document.body.classList.remove('hide-bottom-nav');
     }
 
+    // Auto-update balance when switching to calculator
+    if (tabName === 'calculator') {
+        updateBalanceFromJournal();
+    }
+
+    // Auto-update strategy dropdown when switching to backtest
+    if (tabName === 'backtest') {
+        updateBacktestStrategyDropdown();
+    }
+
+    // Show selected tab
     if (tabName === 'analytics') {
         setTimeout(() => updateAnalytics(), 100);
     }
@@ -2412,15 +2421,67 @@ async function analyzeChartWithAI() {
     const selectedStrategyId = strategySelector.value;
 
     // Build prompt
-    let prompt = 'Analisa chart trading berikut dan berikan rekomendasi setup trading.';
+    let prompt = `Kamu adalah AI Trading Coach profesional. Analisa chart trading berikut dengan TELITI.
+
+⚠️ ATURAN PENTING:
+1. BACA harga AKTUAL dari chart (lihat angka di axis kanan)
+2. BACA timeframe dari chart (H1, H4, D1, dll)
+3. BACA tanggal/waktu terakhir di chart
+4. JANGAN asumsikan harga - gunakan harga yang TERLIHAT di chart
+5. Berikan setup HIGH PROBABILITY untuk trader SIBUK (tidak bisa pantau market terus)
+
+🎯 KRITERIA SETUP HIGH PROBABILITY:
+1. **Konfirmasi Multiple Timeframe** - Setup harus valid di TF lebih tinggi juga
+2. **Clear Entry Trigger** - Entry pakai pending order (buy stop/sell stop)
+3. **Risk:Reward Minimal 1:2** - TP harus 2x lipat dari SL
+4. **Support/Resistance Kuat** - Gunakan level yang sudah teruji berkali-kali
+5. **Trend Following** - Prioritaskan setup searah trend utama
+
+📊 YANG HARUS KAMU LAKUKAN:
+1. Identifikasi harga CURRENT (candlestick terakhir)
+2. Identifikasi trend UTAMA (lihat TF lebih tinggi jika perlu)
+3. Tentukan support & resistance KUAT (yang sudah teruji)
+4. Berikan setup dengan PROBABILITAS TINGGI (bukan scalping)
+
+📈 FORMAT OUTPUT WAJIB:
+
+**ANALISA CHART:**
+• Pair: [baca dari chart]
+• Timeframe: [baca dari chart]
+• Harga Current: $[harga candlestick terakhir]
+• Trend Utama: [bullish/bearish/sideways]
+• Probabilitas Setup: [High/Medium/Low]
+
+**🟢 BUY SETUP (High Probability):**
+• Pending Order: Buy Stop di $[harga] jika [kondisi trigger]
+• SL: $[harga] (distance: [X] pips/points)
+• TP1: $[harga] (R:R = 1:[ratio])
+• TP2: $[harga] (R:R = 1:[ratio]) - opsional untuk maximize profit
+• Validitas: [berapa jam/hari setup ini valid]
+• Konfirmasi: [indikator/pattern apa yang harus terpenuhi]
+
+**🔴 SELL SETUP (High Probability):**
+• Pending Order: Sell Stop di $[harga] jika [kondisi trigger]
+• SL: $[harga] (distance: [X] pips/points)
+• TP1: $[harga] (R:R = 1:[ratio])
+• TP2: $[harga] (R:R = 1:[ratio]) - opsional
+• Validitas: [berapa jam/hari setup ini valid]
+• Konfirmasi: [indikator/pattern apa yang harus terpenuhi]
+
+⚠️ **PENTING:**
+• Setup ini untuk trader SIBUK - pakai pending order, set and forget
+• Jika dalam [X] jam kondisi tidak terpenuhi, CANCEL pending order
+• Jangan entry manual, tunggu harga trigger pending order otomatis
+
+💡 **DISCLAIMER:**
+Ini hanya insight analisis. Profit nikmati sendiri, rugi tanggung sendiri. 📊`;
 
     if (selectedStrategyId) {
         const strategy = strategies.find(s => s.id == selectedStrategyId);
         if (strategy) {
+            // Override dengan strategy-specific prompt
             prompt = buildStrategyAnalysisPrompt(strategy);
         }
-    } else {
-        prompt += '\n\nBerikan:\n1. Analisa trend & pattern\n2. Support/Resistance levels\n3. Entry point yang disarankan\n4. Stop Loss level\n5. Take Profit target\n6. Risk:Reward ratio\n\nJawab dalam Bahasa Indonesia, format Markdown.';
     }
 
     const chatInput = document.getElementById('chatInput');
@@ -2644,7 +2705,37 @@ async function askAI(prompt) {
                         messages: [
                             {
                                 role: 'system',
-                                content: 'Kamu adalah AI Trading Coach yang membantu trader menganalisa performa dan memberikan saran trading. Jawab dalam Bahasa Indonesia yang santai tapi profesional.'
+                                content: `Kamu adalah AI Trading Coach profesional yang membantu trader.
+
+ATURAN PENTING:
+1. Jawab dalam Bahasa Indonesia yang ringkas dan to-the-point
+2. Gunakan format markdown untuk struktur yang rapi:
+   - **Bold** untuk highlight penting
+   - Bullet points (•) untuk list
+   - Line breaks untuk spacing
+3. Jika user minta rekomendasi trading setup, gunakan format WAJIB ini:
+
+📈 **BUY SETUP:**
+• Entry: [harga] jika [kondisi terpenuhi]
+• SL: [harga]
+• TP: [harga]
+• Lot: [ukuran]
+
+📉 **SELL SETUP:**
+• Entry: [harga] jika [kondisi terpenuhi]
+• SL: [harga]
+• TP: [harga]
+• Lot: [ukuran]
+
+⚠️ **PENTING:**
+Tunggu konfirmasi kondisi. Jika tidak terpenuhi, JANGAN entry.
+
+💡 **DISCLAIMER:**
+Ini hanya insight analisis. Profit nikmati sendiri, rugi tanggung sendiri.
+
+4. Untuk pertanyaan analisis biasa, jawab maksimal 5-7 baris
+5. Hindari penjelasan panjang kecuali diminta detail
+6. Selalu akhiri dengan emoji yang relevan`
                             },
                             {
                                 role: 'user',
@@ -2737,21 +2828,31 @@ function addMessageToChat(sender, text, isLoading = false) {
             <div class="message-avatar">👤</div>
             <div class="message-content">
                 <strong>You</strong>
-                <p>${text}</p>
+                <p>${escapeHtml(text)}</p>
             </div>
         `;
     } else {
-        // Parse simple markdown (bold and list)
+        // Enhanced markdown parsing
         let formattedText = text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n- /g, '<br>• ')
-            .replace(/\n/g, '<br>');
+            // Bold text
+            .replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--accent-primary);">$1</strong>')
+            // Bullet points with proper spacing
+            .replace(/\n• /g, '<br><span style="display: inline-block; margin-left: 0.5rem;">• ')
+            .replace(/\n- /g, '<br><span style="display: inline-block; margin-left: 0.5rem;">• ')
+            // Close span tags
+            .replace(/• (.*?)(<br>|$)/g, '• $1</span>$2')
+            // Double line breaks for paragraphs
+            .replace(/\n\n/g, '</p><p style="margin-top: 0.75rem;">')
+            // Single line breaks
+            .replace(/\n/g, '<br>')
+            // Emoji spacing
+            .replace(/(📈|📉|⚠️|💡|✅|❌|🎯)/g, '<span style="margin-right: 0.25rem;">$1</span>');
 
         div.innerHTML = `
             <div class="message-avatar">🤖</div>
-            <div class="message-content">
+            <div class="message-content ai-response">
                 <strong>${isLoading ? 'AI Coach (typing...)' : 'AI Coach'}</strong>
-                <p>${formattedText}</p>
+                <p style="line-height: 1.6; margin-top: 0.5rem;">${formattedText}</p>
             </div>
         `;
     }
@@ -2760,6 +2861,13 @@ function addMessageToChat(sender, text, isLoading = false) {
     container.scrollTop = container.scrollHeight;
     if (typeof lucide !== 'undefined') lucide.createIcons();
     return id;
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function buildTradingContext() {
@@ -3164,16 +3272,28 @@ let bulkModeActive = false;
 
 // Initialize Backtest Tab
 function initBacktestTab() {
+    // Load backtest settings
+    loadBacktestSettings();
+
     // Set default date to today
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('bt-date').value = now.toISOString().slice(0, 16);
 
-    // Populate strategy dropdown
+    // Populate strategy dropdowns
     updateBacktestStrategyDropdown();
 
+    // Populate strategy performance dropdown
+    const selectedStrategyDropdown = document.getElementById('bt-selected-strategy');
+    if (selectedStrategyDropdown) {
+        selectedStrategyDropdown.innerHTML = '<option value="all">All Strategies</option>';
+        strategies.forEach(s => {
+            selectedStrategyDropdown.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+    }
+
     // Render initial data
-    renderBacktestSummary();
+    updateStrategyPerformance();
     renderBacktestTrades();
 }
 
@@ -3181,6 +3301,7 @@ function initBacktestTab() {
 function updateBacktestStrategyDropdown() {
     const select = document.getElementById('bt-strategy');
     const filterSelect = document.getElementById('bt-filter-strategy');
+    const performanceSelect = document.getElementById('bt-selected-strategy');
 
     if (select) {
         select.innerHTML = '<option value="">-- Pilih Strategi --</option>';
@@ -3194,6 +3315,19 @@ function updateBacktestStrategyDropdown() {
         strategies.forEach(s => {
             filterSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
         });
+    }
+
+    // Update Strategy Performance dropdown
+    if (performanceSelect) {
+        const currentValue = performanceSelect.value;
+        performanceSelect.innerHTML = '<option value="all">All Strategies</option>';
+        strategies.forEach(s => {
+            performanceSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+        // Restore previous selection if still valid
+        if (currentValue && (currentValue === 'all' || strategies.find(s => s.id == currentValue))) {
+            performanceSelect.value = currentValue;
+        }
     }
 }
 
@@ -3240,54 +3374,87 @@ function selectEmotion(emotion, element) {
 
 // Save Backtest Trade
 function saveBacktestTrade() {
-    const strategyId = parseInt(document.getElementById('bt-strategy').value);
     const asset = document.getElementById('bt-asset').value.trim();
     const entry = parseFloat(document.getElementById('bt-entry').value);
     const sl = parseFloat(document.getElementById('bt-sl').value);
-    const tp = parseFloat(document.getElementById('bt-tp').value);
+    const tp = parseFloat(document.getElementById('bt-tp').value) || 0;
     const result = document.getElementById('bt-result').value;
-    const pnl = parseFloat(document.getElementById('bt-pnl').value) || 0;
-    const emotion = document.getElementById('bt-emotion').value;
+    const emotion = document.getElementById('bt-emotion').value || 'neutral';
     const notes = document.getElementById('bt-notes').value.trim();
     const tradeDate = document.getElementById('bt-date').value;
+    const leverage = parseInt(document.getElementById('bt-leverage').value) || 1;
+
+    // Get strategyId from Strategy Performance dropdown
+    const selectedStrategyId = document.getElementById('bt-selected-strategy').value;
+    const strategyId = (selectedStrategyId && selectedStrategyId !== 'all') ? parseInt(selectedStrategyId) : 0;
+
+    // Get backtest settings
+    const btSettings = JSON.parse(localStorage.getItem('backtestSettings') || '{}');
+    const balance = btSettings.balance || 0;
+    const riskPercent = btSettings.riskPercent || 0;
+    const rrTarget = btSettings.rrTarget || 0;
 
     // Validation
-    if (!strategyId) {
-        showToast('⚠️ Pilih strategi terlebih dahulu!');
+    if (!balance || !riskPercent || !rrTarget) {
+        showToast('⚠️ Isi Backtest Settings terlebih dahulu (Saldo, Risk %, R:R Target)!');
         return;
     }
     if (!asset) {
         showToast('⚠️ Asset/Pair harus diisi!');
         return;
     }
-    if (!entry || !sl || !tp) {
-        showToast('⚠️ Entry, SL, dan TP harus diisi!');
+    if (!entry || !sl) {
+        showToast('⚠️ Entry dan SL harus diisi!');
         return;
     }
     if (entry === sl) {
         showToast('⚠️ Entry dan SL tidak boleh sama!');
         return;
     }
-
-    // Auto-detect direction
-    let direction = document.getElementById('bt-direction').value;
-    if (!direction) {
-        direction = sl < entry ? 'LONG' : 'SHORT';
+    if (!tradeDate) {
+        showToast('⚠️ Trade Date harus diisi!');
+        return;
     }
 
-    // Calculate R:R
-    const risk = Math.abs(entry - sl);
-    const reward = Math.abs(tp - entry);
-    const rrRatio = (reward / risk).toFixed(2);
+    // Auto-detect Mode from Asset
+    const mode = asset.toUpperCase().includes('BTC') || asset.toUpperCase().includes('ETH') ||
+        asset.toUpperCase().includes('USDT') ? 'CRYPTO' : 'FOREX';
 
-    // Get strategy
-    const strategy = strategies.find(s => s.id === strategyId);
+    // Auto-detect Direction from Entry vs SL
+    const direction = sl < entry ? 'LONG' : 'SHORT';
+
+    // Auto-calculate P&L based on Result
+    const riskAmount = balance * (riskPercent / 100);
+    let pnl = 0;
+
+    if (result === 'TP HIT' || result === 'WIN') {
+        // WIN: Risk Amount × R:R Target
+        pnl = riskAmount * rrTarget;
+    } else if (result === 'SL HIT' || result === 'LOSS') {
+        // LOSS: -Risk Amount
+        pnl = -riskAmount;
+    } else if (result === 'BREAKEVEN') {
+        pnl = 0;
+    }
+
+    // Calculate R:R (if TP provided)
+    const risk = Math.abs(entry - sl);
+    const reward = tp > 0 ? Math.abs(tp - entry) : 0;
+    const rrRatio = tp > 0 ? (reward / risk).toFixed(2) : rrTarget.toFixed(2);
+
+    // Remember last strategy for next entry
+    if (strategyId) {
+        localStorage.setItem('lastBacktestStrategy', strategyId.toString());
+    }
+
+    // Get strategy (optional)
+    const strategy = strategyId ? strategies.find(s => s.id === strategyId) : null;
 
     // Create trade object
     const trade = {
         id: Date.now(),
-        date: tradeDate || new Date().toISOString(),
-        mode: currentBacktestMode.toUpperCase(),
+        date: tradeDate,
+        mode: mode,
         asset: asset.toUpperCase(),
         entry: entry,
         sl: sl,
@@ -3301,7 +3468,7 @@ function saveBacktestTrade() {
         notes: notes,
         rrRatio: rrRatio,
         isBacktest: true, // CRITICAL: Mark as backtest
-        leverage: currentBacktestMode === 'crypto' ? (parseFloat(document.getElementById('bt-leverage').value) || 1) : null
+        leverage: mode === 'CRYPTO' ? leverage : null
     };
 
     // Add to journal
@@ -3311,60 +3478,170 @@ function saveBacktestTrade() {
     // Success feedback
     showToast('✅ Backtest trade added successfully!');
 
-    // Add success animation
-    const addBtn = event.target.closest('.btn-primary');
-    if (addBtn) {
-        addBtn.classList.add('success-pulse');
-        setTimeout(() => addBtn.classList.remove('success-pulse'), 600);
-    }
-
-    // Clear form
+    // Update UI
+    updateStrategyPerformance();
+    renderBacktestTrades();
     clearBacktestForm();
 
-    // Update displays
-    renderBacktestSummary();
-    renderBacktestTrades();
+    // Scroll to top to see the new trade
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     updateStrategyFilter(); // Update journal filters
+}
+
+// Save Backtest Settings to localStorage
+function saveBacktestSettings() {
+    const balance = parseFloat(document.getElementById('bt-balance').value) || 0;
+    const riskPercent = parseFloat(document.getElementById('bt-risk-percent').value) || 0;
+    const rrTarget = parseFloat(document.getElementById('bt-rr-target').value) || 0;
+
+    const settings = {
+        balance: balance,
+        riskPercent: riskPercent,
+        rrTarget: rrTarget
+    };
+
+    localStorage.setItem('backtestSettings', JSON.stringify(settings));
+}
+
+// Load Backtest Settings from localStorage
+function loadBacktestSettings() {
+    const saved = localStorage.getItem('backtestSettings');
+    if (saved) {
+        const settings = JSON.parse(saved);
+        document.getElementById('bt-balance').value = settings.balance || '';
+        document.getElementById('bt-risk-percent').value = settings.riskPercent || '';
+        document.getElementById('bt-rr-target').value = settings.rrTarget || '';
+    }
+}
+
+// Toggle Optional Fields in Backtest
+function toggleOptionalFields() {
+    const fields = document.getElementById('optionalFields');
+    const btn = document.querySelector('.btn-collapse');
+
+    if (fields.style.display === 'none') {
+        fields.style.display = 'block';
+        btn.innerHTML = '<i data-lucide="chevron-up"></i> Hide Details';
+    } else {
+        fields.style.display = 'none';
+        btn.innerHTML = '<i data-lucide="chevron-down"></i> More Details (Optional)';
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Clear Backtest Form
 function clearBacktestForm() {
+    document.getElementById('bt-date').value = '';
     document.getElementById('bt-asset').value = '';
     document.getElementById('bt-entry').value = '';
     document.getElementById('bt-sl').value = '';
     document.getElementById('bt-tp').value = '';
-    document.getElementById('bt-rr').value = '';
-    document.getElementById('bt-direction').value = '';
-    document.getElementById('bt-result').value = 'PENDING';
+    document.getElementById('bt-result').value = 'TP HIT';
     document.getElementById('bt-pnl').value = '';
     document.getElementById('bt-notes').value = '';
+    document.getElementById('bt-rr').value = '';
+    document.getElementById('bt-leverage').value = '1';
+
+    // Load last used strategy
+    const lastStrategy = localStorage.getItem('lastBacktestStrategy');
+    if (lastStrategy) {
+        document.getElementById('bt-strategy').value = lastStrategy;
+    } else {
+        document.getElementById('bt-strategy').value = '';
+    }
 
     // Reset emotion to neutral
     document.querySelectorAll('.emotion-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector('.emotion-btn[onclick*="neutral"]').classList.add('active');
+    const neutralBtn = Array.from(document.querySelectorAll('.emotion-btn')).find(btn => btn.textContent.includes('Neutral'));
+    if (neutralBtn) neutralBtn.classList.add('active');
     document.getElementById('bt-emotion').value = 'neutral';
-
-    // Keep strategy and date
 }
 
 // Render Backtest Summary
+// Update Strategy Performance Metrics
+function updateStrategyPerformance() {
+    const selectedStrategyId = document.getElementById('bt-selected-strategy').value;
+    const btSettings = JSON.parse(localStorage.getItem('backtestSettings') || '{}');
+    const initialBalance = btSettings.balance || 0;
+
+    // Filter trades by selected strategy
+    let filteredTrades = journalData.filter(t => t.isBacktest); // Changed backtestData to journalData.filter(t => t.isBacktest)
+    if (selectedStrategyId !== 'all') {
+        filteredTrades = filteredTrades.filter(t => t.strategyId == selectedStrategyId);
+    }
+
+    const totalTrades = filteredTrades.length;
+    const wins = filteredTrades.filter(t => t.result === 'TP HIT' || t.result === 'WIN').length;
+    const losses = filteredTrades.filter(t => t.result === 'SL HIT' || t.result === 'LOSS').length;
+    const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
+
+    // Calculate streaks
+    let currentWinStreak = 0;
+    let currentLoseStreak = 0;
+    let maxWinStreak = 0;
+    let maxLoseStreak = 0;
+
+    filteredTrades.forEach(trade => {
+        const isWin = trade.result === 'TP HIT' || trade.result === 'WIN';
+
+        if (isWin) {
+            currentWinStreak++;
+            currentLoseStreak = 0;
+            maxWinStreak = Math.max(maxWinStreak, currentWinStreak);
+        } else if (trade.result === 'SL HIT' || trade.result === 'LOSS') {
+            currentLoseStreak++;
+            currentWinStreak = 0;
+            maxLoseStreak = Math.max(maxLoseStreak, currentLoseStreak);
+        }
+    });
+
+    // Calculate drawdown
+    let peak = initialBalance;
+    let maxDrawdown = 0;
+    let runningBalance = initialBalance;
+
+    filteredTrades.forEach(trade => {
+        runningBalance += trade.pnl;
+        peak = Math.max(peak, runningBalance);
+        const drawdown = ((peak - runningBalance) / peak) * 100;
+        maxDrawdown = Math.max(maxDrawdown, drawdown);
+    });
+
+    // Calculate avg R:R
+    const totalRR = filteredTrades.reduce((sum, t) => sum + (parseFloat(t.rrRatio) || 0), 0);
+    const avgRR = totalTrades > 0 ? (totalRR / totalTrades).toFixed(2) : 0;
+
+    // Calculate total P&L
+    const totalPnL = filteredTrades.reduce((sum, t) => sum + t.pnl, 0);
+    const pnlPercent = initialBalance > 0 ? ((totalPnL / initialBalance) * 100).toFixed(2) : 0;
+
+    // Update UI
+    document.getElementById('sp-total-trades').textContent = totalTrades;
+    document.getElementById('sp-win-rate').textContent = winRate + '%';
+    document.getElementById('sp-lose-streak').textContent = maxLoseStreak;
+    document.getElementById('sp-win-streak').textContent = maxWinStreak;
+    document.getElementById('sp-drawdown').textContent = maxDrawdown.toFixed(2) + '%';
+    document.getElementById('sp-avg-rr').textContent = avgRR;
+
+    // Update P&L with color
+    const pnlAmountEl = document.getElementById('sp-pnl-amount');
+    const pnlPercentEl = document.getElementById('sp-pnl-percent');
+    pnlAmountEl.textContent = '$' + totalPnL.toFixed(2);
+    pnlPercentEl.textContent = '(' + (pnlPercent >= 0 ? '+' : '') + pnlPercent + '%)';
+
+    if (totalPnL >= 0) {
+        pnlAmountEl.style.color = 'var(--success)';
+        pnlPercentEl.style.color = 'var(--success)';
+    } else {
+        pnlAmountEl.style.color = 'var(--danger)';
+        pnlPercentEl.style.color = 'var(--danger)';
+    }
+}
+
+// Render Backtest Summary (Legacy - now using updateStrategyPerformance)
 function renderBacktestSummary() {
-    const backtestTrades = journalData.filter(t => t.isBacktest);
-    const closedTrades = backtestTrades.filter(t => t.result !== 'PENDING');
-
-    const totalTrades = backtestTrades.length;
-    const wins = closedTrades.filter(t => t.result === 'WIN' || t.result === 'TP HIT').length;
-    const winRate = closedTrades.length > 0 ? ((wins / closedTrades.length) * 100).toFixed(1) : 0;
-    const netPnL = closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-    const avgRR = closedTrades.length > 0
-        ? (closedTrades.reduce((sum, t) => sum + parseFloat(t.rrRatio || 0), 0) / closedTrades.length).toFixed(2)
-        : 0;
-
-    document.getElementById('backtest-totalTrades').textContent = totalTrades;
-    document.getElementById('backtest-winRate').textContent = `${winRate}%`;
-    document.getElementById('backtest-netPnL').textContent = `$${netPnL.toFixed(2)}`;
-    document.getElementById('backtest-netPnL').style.color = netPnL >= 0 ? 'var(--success)' : 'var(--danger)';
-    document.getElementById('backtest-avgRR').textContent = avgRR;
+    updateStrategyPerformance();
 }
 
 // Filter Backtest Trades
