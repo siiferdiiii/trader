@@ -3566,6 +3566,11 @@ function initPWA() {
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
+
+        // Show the sidebar button
+        const installBtn = document.getElementById('installAppBtn');
+        if (installBtn) installBtn.style.display = 'block';
+
         showInstallPrompt();
     });
 
@@ -3573,8 +3578,31 @@ function initPWA() {
     window.addEventListener('appinstalled', () => {
         console.log('✅ PWA installed successfully!');
         deferredPrompt = null;
+
+        // Hide sidebar button
+        const installBtn = document.getElementById('installAppBtn');
+        if (installBtn) installBtn.style.display = 'none';
+
         showToast('✅ App installed! You can now use it offline.');
     });
+}
+
+// Triggered by the sidebar button
+async function installPWA() {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+
+    deferredPrompt = null;
+
+    // Hide button if installed
+    if (outcome === 'accepted') {
+        const installBtn = document.getElementById('installAppBtn');
+        if (installBtn) installBtn.style.display = 'none';
+    }
 }
 
 // Show install prompt (optional - can be triggered by button)
