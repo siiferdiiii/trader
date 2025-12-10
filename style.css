@@ -2724,3 +2724,21 @@ body.light-mode {
         opacity: 1;
     }
 }
+
+/* Responsive Form Row */
+.form-row-responsive {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .form-row-responsive {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Hide Bottom Nav Utility */
+body.hide-bottom-nav .bottom-nav {
+    display: none !important;
+}
