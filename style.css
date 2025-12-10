@@ -1442,6 +1442,11 @@ body.light-mode {
 
 @media (max-width: 768px) {
 
+    /* Fix sidebar footer conflict with bottom nav */
+    .app-sidebar .sidebar-footer {
+        padding-bottom: 80px;
+    }
+
     /* Hide Desktop Tabs */
     .desktop-tabs {
         display: none !important;
@@ -2386,12 +2391,14 @@ body.light-mode .tippy-box[data-theme~='custom'] {
         margin: 0 !important;
         padding: 0 !important;
         width: 100vw;
-        height: 100vh;
+        height: 100dvh;
+        /* Use dynamic viewport height */
         overflow: hidden;
     }
 
     #aicoach.active .ai-chat-wrapper {
-        height: 100vh;
+        height: 100%;
+        /* Fill the fixed container */
         display: flex;
         flex-direction: column;
         margin: 0;
