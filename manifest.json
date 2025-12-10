@@ -2,13 +2,17 @@
   "name": "Trading Manager Pro",
   "short_name": "TradingPro",
   "description": "Professional trading journal, risk calculator & backtest tool for forex and crypto traders",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/trader/",
+  "scope": "/trader/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0ea5e9",
   "orientation": "portrait-primary",
-  "categories": ["finance", "productivity", "business"],
+  "categories": [
+    "finance",
+    "productivity",
+    "business"
+  ],
   "icons": [
     {
       "src": "icon-192.png",
