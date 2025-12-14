@@ -465,256 +465,265 @@
 
             <!-- Tab: Backtest -->
             <div id="backtest" class="tab-pane">
-                <!-- Strategy Performance Card -->
-                <div class="card"
-                    style="background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%); border-left: 4px solid var(--accent-primary);">
-                    <div
-                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <!-- Session Setup (Sticky HUD) -->
+                <div class="session-hud" id="backtestSetupCard" style="position: sticky; top: 0; z-index: 10;">
+
+                    <!-- HUD Header (Always Visible) -->
+                    <div class="hud-header" onclick="toggleBacktestSettings()" style="padding: 0.5rem 0;">
                         <div style="display: flex; align-items: center; gap: 1rem;">
-                            <div style="font-size: 2.5rem;">📊</div>
+                            <!-- Icon Box -->
+                            <div
+                                style="background: rgba(0, 214, 143, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent-primary);">
+                                <i data-lucide="crosshair"></i>
+                            </div>
+
+                            <!-- Session Info -->
                             <div>
-                                <h2 style="font-size: 1.25rem; margin-bottom: 0.25rem;">Strategy Performance</h2>
-                                <select class="form-select" id="bt-selected-strategy"
-                                    onchange="updateStrategyPerformance()" style="width: 250px; margin-top: 0.5rem;">
-                                    <option value="all">All Strategies</option>
+                                <div
+                                    style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600;">
+                                    Active Session</div>
+                                <div
+                                    style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem; margin-top: 2px;">
+                                    <span id="hud-asset-display">EURUSD</span>
+                                    <span style="opacity: 0.3;">/</span>
+                                    <span id="hud-strategy-display"
+                                        style="font-weight: 500; color: var(--text-secondary);">Intraday</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: Edit / Save Status -->
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <div class="hud-chip" style="display: none; @media(min-width: 768px){display:flex;}">
+                                <span id="hud-risk-display" style="color: var(--warning);">Risk 1%</span>
+                            </div>
+                            <div
+                                style="background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                                <i data-lucide="check-circle" style="width: 18px; color: var(--text-muted);"
+                                    id="bt-settings-status-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Config Panel (Hidden by Default) -->
+                    <div id="backtestSettingsPanel"
+                        style="display: none; margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; animation: slideDown 0.3s ease;">
+
+                        <!-- Presets Loader -->
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label class="form-label" style="font-size: 0.8rem; color: var(--accent-primary);">📂 Load
+                                Saved Session</label>
+                            <select class="form-select" id="bt-preset-load" onchange="loadBacktestPreset(this.value)">
+                                <option value="">-- Start Fresh / Select Preset --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-grid"
+                            style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+
+                            <!-- Inputs -->
+                            <div class="form-group">
+                                <label class="form-label" style="font-size: 0.8rem;">Start Balance</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-input" id="bt-balance" value="1000">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="font-size: 0.8rem;">Risk Per Trade %</label>
+                                <input type="number" class="form-input" id="bt-risk" step="0.1" value="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="font-size: 0.8rem;">Reward Ratio (R:R)</label>
+                                <input type="number" class="form-input" id="bt-rr" step="0.1" value="2">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="font-size: 0.8rem;">Asset Pair</label>
+                                <input type="text" class="form-input" id="bt-asset" placeholder="EURUSD">
+                            </div>
+
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label class="form-label" style="font-size: 0.8rem;">Strategy</label>
+                                <select class="form-select" id="bt-strategy">
+                                    <option value="">-- Select Strategy --</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label class="form-label" style="font-size: 0.8rem;">Trading Style</label>
+                                <select class="form-select" id="bt-style">
+                                    <option value="Scalping">Scalping</option>
+                                    <option value="Intraday" selected>Intraday</option>
+                                    <option value="Swing">Swing</option>
                                 </select>
                             </div>
                         </div>
 
-                    </div>
-
-                    <!-- Performance Metrics Grid -->
-                    <div
-                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                        <!-- Save Button with Name Input -->
                         <div
-                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--accent-primary);">
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Total
-                                Trades</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);"
-                                id="sp-total-trades">0</div>
-                        </div>
-                        <div
-                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--success);">
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Win Rate
+                            style="display: flex; gap: 1rem; align-items: flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label" style="font-size: 0.8rem;">Save As Preset Name
+                                    (Optional)</label>
+                                <input type="text" class="form-input" id="bt-preset-name"
+                                    placeholder="e.g. My compounding Plan">
                             </div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);" id="sp-win-rate">0%
-                            </div>
-                        </div>
-                        <div
-                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--danger);">
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Max Lose
-                                Streak</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--danger);" id="sp-lose-streak">
-                                0</div>
-                        </div>
-                        <div
-                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--success);">
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Max Win
-                                Streak</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);" id="sp-win-streak">
-                                0</div>
-                        </div>
-                        <div
-                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--warning);">
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Drawdown
-                            </div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);" id="sp-drawdown">0%
-                            </div>
-                        </div>
-                        <div
-                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--accent-primary);">
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Avg R:R
-                            </div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-primary);"
-                                id="sp-avg-rr">0</div>
-                        </div>
-                        <div
-                            style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; border-left: 3px solid var(--success); grid-column: span 2;">
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Total P&L
-                            </div>
-                            <div style="display: flex; align-items: baseline; gap: 0.5rem;">
-                                <div style="font-size: 1.75rem; font-weight: 700;" id="sp-pnl-amount">$0</div>
-                                <div style="font-size: 1rem; font-weight: 600; color: var(--text-muted);"
-                                    id="sp-pnl-percent">(0%)</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Backtest Settings (One-time Setup) -->
-                <div class="card"
-                    style="background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%); border-left: 3px solid var(--warning);">
-                    <div class="card-header">
-                        <h2 class="card-title"><i data-lucide="settings"></i> Backtest Settings</h2>
-                        <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">Isi sekali saja, data akan
-                            disimpan otomatis</p>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">💰 Saldo Trading ($)</label>
-                        <input type="number" class="form-input" id="bt-balance" placeholder="10000"
-                            oninput="saveBacktestSettings()">
-                    </div>
-                    <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                        <div class="form-group">
-                            <label class="form-label">⚠️ Risk per Trade (%)</label>
-                            <input type="number" class="form-input" id="bt-risk-percent" placeholder="1" step="0.1"
-                                oninput="saveBacktestSettings()">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">🎯 R:R Target</label>
-                            <input type="number" class="form-input" id="bt-rr-target" placeholder="2" step="0.1"
-                                oninput="saveBacktestSettings()">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Entry Form -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title"><i data-lucide="plus-circle"></i> Quick Entry Form</h2>
-                        <button class="btn btn-secondary" onclick="toggleBulkMode()" id="bulkModeBtn">
-                            <i data-lucide="layers"></i> Bulk Mode
-                        </button>
-                    </div>
-
-                    <div id="backtestFormContainer">
-                        <!-- Single Entry Form -->
-                        <div class="backtest-form" id="singleEntryForm">
-                            <!-- Quick Entry Section (Always Visible) -->
-                            <div class="backtest-quick-entry">
-                                <!-- Row 1: Date + Asset -->
-                                <div class="form-grid"
-                                    style="grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
-                                    <div class="form-group">
-                                        <label class="form-label">📅 Trade Date</label>
-                                        <input type="date" class="form-input" id="bt-date">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">💱 Asset/Pair</label>
-                                        <input type="text" class="form-input" id="bt-asset"
-                                            placeholder="EUR/USD, BTC/USDT">
-                                    </div>
-                                </div>
-
-                                <!-- Row 2: Entry + SL -->
-                                <div class="form-grid"
-                                    style="grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
-                                    <div class="form-group">
-                                        <label class="form-label">📈 Entry Price</label>
-                                        <input type="number" class="form-input" id="bt-entry" placeholder="0.00000"
-                                            step="any" oninput="calculateBacktestRR()">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">🛑 Stop Loss</label>
-                                        <input type="number" class="form-input" id="bt-sl" placeholder="0.00000"
-                                            step="any" oninput="calculateBacktestRR()">
-                                    </div>
-                                </div>
-
-                                <!-- Row 3: Result -->
-                                <div class="form-group">
-                                    <label class="form-label">📊 Result</label>
-                                    <select class="form-select" id="bt-result">
-                                        <option value="TP HIT">TP HIT ✅</option>
-                                        <option value="SL HIT">SL HIT ❌</option>
-                                        <option value="WIN">WIN (Manual)</option>
-                                        <option value="LOSS">LOSS (Manual)</option>
-                                        <option value="BREAKEVEN">BREAKEVEN</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- Optional Fields (Collapsible) -->
-                            <button type="button" class="btn-collapse" onclick="toggleOptionalFields()">
-                                <i data-lucide="chevron-down"></i> More Details (Optional)
+                            <button class="btn btn-primary" onclick="saveBacktestSettings()" style="min-width: 140px;">
+                                <i data-lucide="save"></i> Save & Use
                             </button>
+                        </div>
+                    </div>
+                </div>
 
-                            <div id="optionalFields" class="optional-fields" style="display: none;">
-                                <div class="form-grid">
-                                    <div class="form-group">
-                                        <label class="form-label">🎯 Take Profit (Optional)</label>
-                                        <input type="number" class="form-input" id="bt-tp" placeholder="0.00000"
-                                            step="any" oninput="calculateBacktestRR()">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">⚡ Leverage (Crypto)</label>
-                                        <input type="number" class="form-input" id="bt-leverage" placeholder="10"
-                                            value="1">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">⚖️ Risk:Reward</label>
-                                        <input type="text" class="form-input" id="bt-rr" placeholder="Auto" readonly
-                                            style="background: var(--bg-primary);">
-                                    </div>
+                <!-- Filter Bar -->
+                <div class="backtest-filter-bar">
+                    <select id="bt-filter-method" class="backtest-filter-select">
+                        <option value="all">All Strategies</option>
+                    </select>
+                    <select id="bt-filter-asset" class="backtest-filter-select">
+                        <option value="all">All Pairs</option>
+                    </select>
+                    <select id="bt-filter-style" class="backtest-filter-select">
+                        <option value="all">All Styles</option>
+                        <option value="Intraday">Intraday</option>
+                        <option value="Swing">Swing</option>
+                        <option value="Scalping">Scalping</option>
+                    </select>
+                    <select id="bt-filter-result" class="backtest-filter-select">
+                        <option value="all">All Results</option>
+                        <option value="WIN">Win</option>
+                        <option value="LOSS">Loss</option>
+                        <option value="BREAKEVEN">Breakeven</option>
+                    </select>
+                </div>
+
+                <!-- Session Stats & Chart -->
+                <div class="stats-grid"
+                    style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <!-- Card 1: Equity & Growth -->
+                    <div class="stat-card stat-card-gradient">
+                        <div class="stat-icon"><i data-lucide="trending-up"></i></div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="bt-current-balance">$1,000.00</div>
+                            <div class="stat-label">Equity <span id="bt-session-growth"
+                                    style="font-size: 0.8rem; color: var(--success);">(+0%)</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: P&L -->
+                    <div class="stat-card stat-card-gradient">
+                        <div class="stat-icon"><i data-lucide="dollar-sign"></i></div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="bt-session-pnl" style="font-size: 1.5rem;">$0.00</div>
+                            <div class="stat-label">Session P&L</div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Win Rate -->
+                    <div class="stat-card stat-card-gradient">
+                        <div class="stat-icon"><i data-lucide="percent"></i></div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="bt-session-winrate">0%</div>
+                            <div class="stat-label">Win Rate</div>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Streaks -->
+                    <div class="stat-card stat-card-gradient">
+                        <div class="stat-icon"><i data-lucide="activity"></i></div>
+                        <div class="stat-content">
+                            <div style="display: flex; gap: 1rem;">
+                                <div>
+                                    <div class="stat-value" id="bt-max-winstreak"
+                                        style="font-size: 1.25rem; color: var(--success);">0</div>
+                                    <div class="stat-label">Max Win Streak</div>
                                 </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">😊 Emotion</label>
-                                    <div class="emotion-buttons"
-                                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.5rem;">
-                                        <button type="button" class="emotion-btn"
-                                            onclick="selectEmotion('confident', this)">😎
-                                            Confident</button>
-                                        <button type="button" class="emotion-btn"
-                                            onclick="selectEmotion('calm', this)">😌
-                                            Calm</button>
-                                        <button type="button" class="emotion-btn active"
-                                            onclick="selectEmotion('neutral', this)">😐 Neutral</button>
-                                        <button type="button" class="emotion-btn"
-                                            onclick="selectEmotion('excited', this)">🤩
-                                            Excited</button>
-                                        <button type="button" class="emotion-btn"
-                                            onclick="selectEmotion('anxious', this)">😰
-                                            Anxious</button>
-                                        <button type="button" class="emotion-btn"
-                                            onclick="selectEmotion('fearful', this)">😨
-                                            Fearful</button>
-                                    </div>
-                                    <input type="hidden" id="bt-emotion" value="neutral">
+                                <div style="border-right: 1px solid rgba(255,255,255,0.1);"></div>
+                                <div>
+                                    <div class="stat-value" id="bt-max-losestreak"
+                                        style="font-size: 1.25rem; color: var(--danger);">0</div>
+                                    <div class="stat-label">Max Lose Streak</div>
                                 </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">📝 Notes (Optional)</label>
-                                    <textarea class="form-input" id="bt-notes" rows="2"
-                                        placeholder="Market condition, entry reason..."></textarea>
-                                </div>
-                            </div>
-
-                            <!-- Hidden fields for auto-detected values -->
-                            <input type="hidden" id="bt-mode" value="forex">
-                            <input type="hidden" id="bt-direction" value="">
-
-                            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                                <button class="btn btn-primary" onclick="saveBacktestTrade()" style="flex: 1;">
-                                    <i data-lucide="check-circle"></i> Add Trade
-                                </button>
-                                <button class="btn btn-secondary" onclick="clearBacktestForm()">
-                                    <i data-lucide="refresh-cw"></i> Clear
-                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Backtest Trade List -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title"><i data-lucide="list"></i> Backtest Trades</h2>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <select class="form-select" id="bt-filter-strategy" onchange="filterBacktestTrades()"
-                                style="width: auto;">
-                                <option value="all">All Strategies</option>
-                            </select>
-                            <select class="form-select" id="bt-filter-result" onchange="filterBacktestTrades()"
-                                style="width: auto;">
-                                <option value="all">All Results</option>
-                                <option value="WIN">Wins Only</option>
-                                <option value="LOSS">Losses Only</option>
-                                <option value="PENDING">Pending</option>
-                            </select>
+                <!-- Stats & Charts Section -->
+
+                <!-- Stats & Charts Section: Side-by-Side Layout -->
+                <div class="charts-grid" style="margin-top: 1.5rem;">
+
+                    <!-- 1. Left: Equity Curve (Full Height of Section) -->
+                    <div class="card" style="padding: 1rem; min-height: 400px; display: flex; flex-direction: column;">
+                        <div
+                            style="font-weight: 600; margin-bottom: 1rem; display: flex; justify-content: space-between;">
+                            <span><i data-lucide="line-chart"></i> Equity Curve (PnL)</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Cumulative PnL ($)</span>
+                        </div>
+                        <div style="flex: 1; position: relative;">
+                            <canvas id="backtestEquityChart"></canvas>
                         </div>
                     </div>
-                    <div id="backtestTradeList"></div>
+
+                    <!-- 2. Right: Pie & Stats -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+
+                        <!-- Pie Chart -->
+                        <div class="card" style="padding: 1rem; flex: 1; display: flex; flex-direction: column;">
+                            <div style="font-weight: 600; margin-bottom: 1rem;"><i data-lucide="pie-chart"></i> Win/Loss
+                                Dist.</div>
+                            <div style="flex: 1; position: relative;">
+                                <canvas id="backtestPieChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Total Trades -->
+                        <div class="stat-card"
+                            style="padding: 1rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 1rem;">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.25rem;">TOTAL
+                                TRADES</div>
+                            <div style="font-size: 2rem; font-weight: 700;" id="bt-total-trades">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions (Sticky Bottom) -->
+                <div class="backtest-actions-bar">
+                    <button class="btn btn-big-action btn-success" onclick="quickBacktest('WIN')">
+                        <div class="action-icon">✅</div>
+                        <div class="action-label">WIN (TP)</div>
+                    </button>
+                    <button class="btn btn-big-action btn-danger" onclick="quickBacktest('LOSS')">
+                        <div class="action-icon">❌</div>
+                        <div class="action-label">LOSS (SL)</div>
+                    </button>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <button class="btn-text" onclick="toggleAdvancedBacktest()" id="bt-advanced-toggle">
+                        Show Advanced Options (Price)
+                    </button>
+                </div>
+
+                <!-- Advanced/Manual Inputs (Hidden by default) -->
+                <div id="bt-advanced-inputs" class="card"
+                    style="display: none; border-left: 3px solid var(--text-muted);">
+                    <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+                        <input type="number" class="form-input" id="bt-manual-entry" placeholder="Entry Price">
+                        <input type="number" class="form-input" id="bt-manual-sl" placeholder="SL Price">
+                        <input type="number" class="form-input" id="bt-manual-tp" placeholder="TP Price">
+                    </div>
+                    <small style="color: var(--text-muted);">*Optional: Leave empty for auto-calculation based on %
+                        Risk</small>
+                </div>
+
+                <!-- Trade List -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">History Data Backtest</h2>
+                        <button class="btn btn-sm btn-danger" onclick="resetBacktestSession()">Reset Session</button>
+                    </div>
+                    <div id="backtestTradeList" class="minimal-list"></div>
                 </div>
             </div>
 
