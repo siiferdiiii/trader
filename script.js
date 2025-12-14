@@ -32,6 +32,16 @@ let miniDistributionChart = null;
 let currentEditTradeId = null;
 let geminiApiKey = localStorage.getItem('geminiApiKey') || '';
 
+// Utility: Format Currency
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount);
+}
+
 // Default Strategies Template
 function getDefaultStrategies() {
     return [
@@ -332,9 +342,9 @@ function switchTab(tabName) {
         updateBalanceFromJournal();
     }
 
-    // Auto-update strategy dropdown when switching to backtest
+    // Initialize Backtest Module
     if (tabName === 'backtest') {
-        updateBacktestStrategyDropdown();
+        initBacktestTab();
     }
 
     // Show selected tab
@@ -3318,41 +3328,11 @@ function initBacktestTab() {
     // Render initial data
     updateStrategyPerformance();
     renderBacktestTrades();
+    populateBacktestFilters(); // New Global Populate
+    forcePopulateStrategyDropdown();
 }
 
-// Update Strategy Dropdown
-function updateBacktestStrategyDropdown() {
-    const select = document.getElementById('bt-strategy');
-    const filterSelect = document.getElementById('bt-filter-strategy');
-    const performanceSelect = document.getElementById('bt-selected-strategy');
 
-    if (select) {
-        select.innerHTML = '<option value="">-- Pilih Strategi --</option>';
-        strategies.forEach(s => {
-            select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-        });
-    }
-
-    if (filterSelect) {
-        filterSelect.innerHTML = '<option value="all">All Strategies</option>';
-        strategies.forEach(s => {
-            filterSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-        });
-    }
-
-    // Update Strategy Performance dropdown
-    if (performanceSelect) {
-        const currentValue = performanceSelect.value;
-        performanceSelect.innerHTML = '<option value="all">All Strategies</option>';
-        strategies.forEach(s => {
-            performanceSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-        });
-        // Restore previous selection if still valid
-        if (currentValue && (currentValue === 'all' || strategies.find(s => s.id == currentValue))) {
-            performanceSelect.value = currentValue;
-        }
-    }
-}
 
 // Switch Backtest Mode (Forex/Crypto)
 function switchBacktestMode(mode, element) {
@@ -3512,301 +3492,606 @@ function saveBacktestTrade() {
 }
 
 // Save Backtest Settings to localStorage
-function saveBacktestSettings() {
-    const balance = parseFloat(document.getElementById('bt-balance').value) || 0;
-    const riskPercent = parseFloat(document.getElementById('bt-risk-percent').value) || 0;
-    const rrTarget = parseFloat(document.getElementById('bt-rr-target').value) || 0;
+// ==========================================
+// NEW BACKTEST MODULE (Session Based)
+// ==========================================
 
-    const settings = {
-        balance: balance,
-        riskPercent: riskPercent,
-        rrTarget: rrTarget
-    };
+let backtestSession = {
+    balance: 1000,
+    riskPercent: 1,
+    rr: 2,
+    asset: 'EURUSD',
+    strategyId: '',
+    style: 'Intraday',
+    // We strictly use this session ID logic to persist settings
+    // But data is now in `backtestData` global array
+};
 
-    localStorage.setItem('backtestSettings', JSON.stringify(settings));
+let backtestData = JSON.parse(localStorage.getItem('backtestData')) || [];
+
+// FORCE POPULATE STRATEGY DROPDOWN (Direct & Clean)
+function forcePopulateStrategyDropdown() {
+    const select = document.getElementById('bt-strategy');
+    if (!select) return;
+
+    // Use global strategies variable directly
+    const currentStrategies = strategies || [];
+
+    select.innerHTML = '<option value="">-- Select Strategy --</option>';
+
+    if (currentStrategies.length === 0) {
+        select.innerHTML += '<option disabled>No strategies found</option>';
+    } else {
+        currentStrategies.forEach(s => {
+            select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+    }
+
+    // Restore selection
+    if (backtestSession && backtestSession.strategyId) {
+        select.value = backtestSession.strategyId;
+    }
 }
 
-// Load Backtest Settings from localStorage
-function loadBacktestSettings() {
-    const saved = localStorage.getItem('backtestSettings');
+// Initialize Backtest Tab
+function initBacktestTab() {
+    loadBacktestSession();
+    forcePopulateStrategyDropdown(); // <--- NEW CALL
+
+
+    // Bind Filter Events
+    ['bt-filter-method', 'bt-filter-asset', 'bt-filter-style', 'bt-filter-result'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', renderBacktestDashboard);
+    });
+
+    renderBacktestDashboard(); // This will trigger chart and trade list updates too
+    renderBacktestChart();
+    renderBacktestTrades(); // Add trade list rendering
+
+
+    // Populate Filters
+    populateBacktestFilters();
+}
+
+// Populate Filter Dropdowns dynamically
+function populateBacktestFilters() {
+    // 2. Strategy Filter Dropdown (Filter Bar)
+    const methodFilter = document.getElementById('bt-filter-method');
+    if (methodFilter) {
+        const existingMethod = methodFilter.value;
+        methodFilter.innerHTML = '<option value="all">All Strategies</option>';
+        strategies.forEach(s => {
+            methodFilter.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+        methodFilter.value = existingMethod;
+    }
+
+    // 3. Asset Filter Dropdown
+    const assetFilter = document.getElementById('bt-filter-asset');
+    if (assetFilter) {
+        const existingAsset = assetFilter.value;
+        const assets = [...new Set(backtestData.map(t => t.asset))];
+        assetFilter.innerHTML = '<option value="all">All Pairs</option>';
+        if (assets.length > 0) {
+            assets.sort().forEach(a => {
+                assetFilter.innerHTML += `<option value="${a}">${a}</option>`;
+            });
+        }
+        assetFilter.value = existingAsset;
+    }
+}
+
+// Get Filtered Data
+function getFilteredBacktestData() {
+    let filtered = [...backtestData];
+
+    const methodEl = document.getElementById('bt-filter-method');
+    const assetEl = document.getElementById('bt-filter-asset');
+    const styleEl = document.getElementById('bt-filter-style');
+    const resultEl = document.getElementById('bt-filter-result');
+
+    const method = methodEl ? methodEl.value : 'all';
+    const asset = assetEl ? assetEl.value : 'all';
+    const style = styleEl ? styleEl.value : 'all';
+    const result = resultEl ? resultEl.value : 'all';
+
+    if (method !== 'all') filtered = filtered.filter(t => t.strategyId == method);
+    if (asset !== 'all') filtered = filtered.filter(t => t.asset === asset);
+
+    // Patch: filter by style property if exists, else notes
+    if (style !== 'all') filtered = filtered.filter(t => (t.style === style) || (t.notes && t.notes.includes(style)));
+
+    if (result !== 'all') {
+        if (result === 'WIN') filtered = filtered.filter(t => t.pnl > 0);
+        if (result === 'LOSS') filtered = filtered.filter(t => t.pnl < 0);
+        if (result === 'BREAKEVEN') filtered = filtered.filter(t => t.pnl === 0);
+    }
+
+    return filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+// Load Session from LocalStorage
+// Load Session from LocalStorage
+function loadBacktestSession() {
+    const saved = localStorage.getItem('backtestSession');
     if (saved) {
-        const settings = JSON.parse(saved);
-        document.getElementById('bt-balance').value = settings.balance || '';
-        document.getElementById('bt-risk-percent').value = settings.riskPercent || '';
-        document.getElementById('bt-rr-target').value = settings.rrTarget || '';
-    }
-}
+        backtestSession = JSON.parse(saved);
 
-// Toggle Optional Fields in Backtest
-function toggleOptionalFields() {
-    const fields = document.getElementById('optionalFields');
-    const btn = document.querySelector('.btn-collapse');
-
-    if (fields.style.display === 'none') {
-        fields.style.display = 'block';
-        btn.innerHTML = '<i data-lucide="chevron-up"></i> Hide Details';
+        // Restore Inputs
+        document.getElementById('bt-balance').value = backtestSession.balance;
+        document.getElementById('bt-risk').value = backtestSession.riskPercent;
+        document.getElementById('bt-rr').value = backtestSession.rr;
+        document.getElementById('bt-asset').value = backtestSession.asset;
+        document.getElementById('bt-style').value = backtestSession.style || 'Intraday';
     } else {
-        fields.style.display = 'none';
-        btn.innerHTML = '<i data-lucide="chevron-down"></i> More Details (Optional)';
+        updateBacktestSession();
     }
-
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+    loadBacktestPresetsDropdown(); // Init presets
 }
 
-// Clear Backtest Form
-function clearBacktestForm() {
-    document.getElementById('bt-date').value = '';
-    document.getElementById('bt-asset').value = '';
-    document.getElementById('bt-entry').value = '';
-    document.getElementById('bt-sl').value = '';
-    document.getElementById('bt-tp').value = '';
-    document.getElementById('bt-result').value = 'TP HIT';
-    document.getElementById('bt-pnl').value = '';
-    document.getElementById('bt-notes').value = '';
-    document.getElementById('bt-rr').value = '';
-    document.getElementById('bt-leverage').value = '1';
+// Update Session Data on Input Change
+// PRESETS LOGIC
+let backtestPresets = JSON.parse(localStorage.getItem('backtestPresets')) || [];
 
-    // Load last used strategy
-    const lastStrategy = localStorage.getItem('lastBacktestStrategy');
-    if (lastStrategy) {
-        document.getElementById('bt-strategy').value = lastStrategy;
+function loadBacktestPresetsDropdown() {
+    const select = document.getElementById('bt-preset-load');
+    if (!select) return;
+
+    backtestPresets = JSON.parse(localStorage.getItem('backtestPresets')) || [];
+
+    // Keep first default option
+    select.innerHTML = '<option value="">-- Start Fresh / Select Preset --</option>';
+
+    backtestPresets.forEach((preset, index) => {
+        const option = document.createElement('option');
+        option.value = index; // Use index as ID for simplicity
+        option.textContent = `📂 ${preset.name}`;
+        select.appendChild(option);
+    });
+}
+
+function loadBacktestPreset(index) {
+    if (index === "") return;
+
+    const preset = backtestPresets[parseInt(index)];
+    if (preset) {
+        document.getElementById('bt-balance').value = preset.balance;
+        document.getElementById('bt-risk').value = preset.riskPercent;
+        document.getElementById('bt-rr').value = preset.rr;
+        document.getElementById('bt-asset').value = preset.asset;
+        document.getElementById('bt-strategy').value = preset.strategyId;
+        document.getElementById('bt-style').value = preset.style;
+        document.getElementById('bt-preset-name').value = preset.name; // Show loaded name
+
+        // Trigger update to save to session and refresh HUD
+        updateBacktestSession();
+        showToast(`✅ Loaded Preset: ${preset.name}`);
+    }
+}
+
+// Update Session Data on Input Change
+function updateBacktestSession() {
+    backtestSession.balance = parseFloat(document.getElementById('bt-balance').value) || 1000;
+    backtestSession.riskPercent = parseFloat(document.getElementById('bt-risk').value) || 1;
+    backtestSession.rr = parseFloat(document.getElementById('bt-rr').value) || 2;
+    backtestSession.asset = document.getElementById('bt-asset').value || 'EURUSD';
+    backtestSession.strategyId = document.getElementById('bt-strategy').value;
+    backtestSession.style = document.getElementById('bt-style').value;
+
+    localStorage.setItem('backtestSession', JSON.stringify(backtestSession));
+
+    // Update HUD Info
+    const stratName = strategies.find(s => s.id == backtestSession.strategyId)?.name || 'Processing...';
+
+    // Update New HUD Display
+    const assetDisplay = document.getElementById('hud-asset-display');
+    const stratDisplay = document.getElementById('hud-strategy-display');
+    const riskDisplay = document.getElementById('hud-risk-display');
+    const statusIcon = document.getElementById('bt-settings-status-icon');
+
+    if (assetDisplay) assetDisplay.textContent = backtestSession.asset.toUpperCase();
+    // Show Strategy name in large text, style is secondary
+    if (stratDisplay) stratDisplay.textContent = stratName + ` (${backtestSession.style})`;
+    if (riskDisplay) riskDisplay.textContent = `Risk ${backtestSession.riskPercent}%`;
+
+    // Visual feedback
+    if (statusIcon) {
+        statusIcon.style.color = 'var(--success)';
+        // Reset after 2s
+        setTimeout(() => statusIcon.style.color = 'var(--text-muted)', 2000);
+    }
+
+    renderBacktestDashboard();
+    if (window.lucide) lucide.createIcons();
+}
+
+function saveBacktestSettings() {
+    // Check if saving as preset
+    const presetName = document.getElementById('bt-preset-name').value.trim();
+
+    if (presetName) {
+        let backtestPresets = JSON.parse(localStorage.getItem('backtestPresets')) || [];
+
+        // Save as Preset
+        const newPreset = {
+            name: presetName,
+            balance: parseFloat(document.getElementById('bt-balance').value) || 1000,
+            riskPercent: parseFloat(document.getElementById('bt-risk').value) || 1,
+            rr: parseFloat(document.getElementById('bt-rr').value) || 2,
+            asset: document.getElementById('bt-asset').value || 'EURUSD',
+            strategyId: document.getElementById('bt-strategy').value,
+            style: document.getElementById('bt-style').value
+        };
+
+        // Check if exists update, else push
+        const existingIndex = backtestPresets.findIndex(p => p.name === presetName);
+        if (existingIndex >= 0) {
+            backtestPresets[existingIndex] = newPreset;
+            showToast(`🔄 Preset "${presetName}" Updated!`);
+        } else {
+            backtestPresets.push(newPreset);
+            showToast(`💾 Preset "${presetName}" Created!`);
+        }
+
+        localStorage.setItem('backtestPresets', JSON.stringify(backtestPresets));
+        loadBacktestPresetsDropdown(); // Refresh dropdown
     } else {
-        document.getElementById('bt-strategy').value = '';
+        showToast('✅ Session Configuration Applied!');
     }
 
-    // Reset emotion to neutral
-    document.querySelectorAll('.emotion-btn').forEach(btn => btn.classList.remove('active'));
-    const neutralBtn = Array.from(document.querySelectorAll('.emotion-btn')).find(btn => btn.textContent.includes('Neutral'));
-    if (neutralBtn) neutralBtn.classList.add('active');
-    document.getElementById('bt-emotion').value = 'neutral';
+    updateBacktestSession();
+    toggleBacktestSettings(); // Close panel
 }
 
-// Render Backtest Summary
-// Update Strategy Performance Metrics
-function updateStrategyPerformance() {
-    const selectedStrategyId = document.getElementById('bt-selected-strategy').value;
-    const btSettings = JSON.parse(localStorage.getItem('backtestSettings') || '{}');
-    const initialBalance = btSettings.balance || 0;
-
-    // Filter trades by selected strategy
-    let filteredTrades = journalData.filter(t => t.isBacktest); // Changed backtestData to journalData.filter(t => t.isBacktest)
-    if (selectedStrategyId !== 'all') {
-        filteredTrades = filteredTrades.filter(t => t.strategyId == selectedStrategyId);
+// Toggle Settings Panel
+function toggleBacktestSettings() {
+    const panel = document.getElementById('backtestSettingsPanel');
+    const icon = document.getElementById('bt-settings-toggle-icon');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        panel.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
     }
+}
 
-    const totalTrades = filteredTrades.length;
-    const wins = filteredTrades.filter(t => t.result === 'TP HIT' || t.result === 'WIN').length;
-    const losses = filteredTrades.filter(t => t.result === 'SL HIT' || t.result === 'LOSS').length;
-    const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
+// Advanced Options Toggle
+function toggleAdvancedBacktest() {
+    const adv = document.getElementById('bt-advanced-inputs');
+    const btn = document.getElementById('bt-advanced-toggle');
+    if (adv.style.display === 'none') {
+        adv.style.display = 'grid';
+        btn.textContent = 'Hide Advanced Options';
+    } else {
+        adv.style.display = 'none';
+        btn.textContent = 'Show Advanced Options (Price)';
+    }
+}
 
-    // Calculate streaks
-    let currentWinStreak = 0;
-    let currentLoseStreak = 0;
+// QUICK BACKTEST ACTION (The Core Logic)
+function quickBacktest(type) {
+    try {
+        if (!backtestSession.strategyId) {
+            showToast('⚠️ Please select a strategy first!');
+            toggleBacktestSettings(); // Open settings to show user
+            return;
+        }
+
+        console.log("🚀 Executing QuickBacktest:", type);
+
+        // 1. Calculate Risk Amount (Compounding based on Filtered Equity)
+        // This allows simulating "What if I only traded this strategy?"
+        const filteredHistory = getFilteredBacktestData();
+        const currentPnL = filteredHistory.reduce((sum, t) => sum + t.pnl, 0);
+        const currentEquity = backtestSession.balance + currentPnL;
+
+        const riskAmount = currentEquity * (backtestSession.riskPercent / 100);
+
+        // 2. Determine P&L
+        let pnl = 0;
+        let resultStatus = 'PENDING';
+
+        if (type === 'WIN') {
+            pnl = riskAmount * backtestSession.rr;
+            resultStatus = 'TP HIT';
+        } else if (type === 'LOSS') {
+            pnl = -riskAmount;
+            resultStatus = 'SL HIT';
+        } else if (type === 'BE') {
+            pnl = 0;
+            resultStatus = 'BREAKEVEN';
+        }
+
+        // 3. Handle Manual Price Inputs (Optional Override)
+        const entryPrice = document.getElementById('bt-manual-entry').value;
+        const slPrice = document.getElementById('bt-manual-sl').value;
+        const tpPrice = document.getElementById('bt-manual-tp').value;
+
+        // 4. Create Trade Object
+        const trade = {
+            id: Date.now(),
+            date: new Date().toISOString(),
+            isBacktest: true, // Flag to separate from real journal
+            mode: 'backtest',
+            asset: backtestSession.asset,
+            strategyId: parseInt(backtestSession.strategyId),
+            strategyName: strategies.find(s => s.id == backtestSession.strategyId)?.name || 'Unknown',
+            risk: riskAmount.toFixed(2),
+            rrRatio: backtestSession.rr,
+            result: resultStatus,
+            pnl: pnl,
+            equityAfter: currentEquity + pnl, // Snapshot of equity
+            style: backtestSession.style, // Explicitly save style for filtering
+
+            // Optional Log
+            entry: entryPrice || '-',
+            sl: slPrice || '-',
+            tp: tpPrice || '-',
+            notes: `Quick ${type} (${backtestSession.style})`,
+            emotion: 'neutral'
+        };
+
+        // 5. Save To BACKTEST DATA (Separated)
+        backtestData.push(trade);
+        localStorage.setItem('backtestData', JSON.stringify(backtestData));
+
+        // 6. Update UI
+        showToast(`✅ Trade Added: ${type} ($${pnl.toFixed(2)})`);
+        populateBacktestFilters();
+        renderBacktestDashboard();
+
+    } catch (e) {
+        console.error("CRITICAL BACKTEST ERROR:", e);
+        alert("CRITICAL ERROR: " + e.message);
+    }
+}
+
+// Reset Session
+// Reset Session (Clears ALL backtest data)
+function resetBacktestSession() {
+    if (!confirm("⚠️ ARE YOU SURE? This will DELETE ALL backtest data history!")) return;
+
+    backtestData = [];
+    localStorage.setItem('backtestData', JSON.stringify(backtestData));
+
+    renderBacktestDashboard();
+}
+
+// Render Dashboard Stats (Balance, Winrate, etc.)
+function renderBacktestDashboard() {
+    const filteredTrades = getFilteredBacktestData();
+
+    // 1. Calculate PnL
+    const totalPnL = filteredTrades.reduce((sum, t) => sum + t.pnl, 0);
+    const currentEquity = backtestSession.balance + totalPnL; // Base balance + PnL
+
+    // 2. Growth Percentage
+    const growthPercent = backtestSession.balance > 0 ? ((currentEquity - backtestSession.balance) / backtestSession.balance) * 100 : 0;
+
+    // 3. Calculate Winrate
+    const wins = filteredTrades.filter(t => t.pnl > 0).length;
+    const total = filteredTrades.length;
+    const winrate = total > 0 ? ((wins / total) * 100).toFixed(1) : 0;
+
+    // 4. Calculate Streaks
     let maxWinStreak = 0;
     let maxLoseStreak = 0;
+    let currentWinStreak = 0;
+    let currentLoseStreak = 0;
 
-    filteredTrades.forEach(trade => {
-        const isWin = trade.result === 'TP HIT' || trade.result === 'WIN';
-
-        if (isWin) {
+    filteredTrades.forEach(t => {
+        if (t.pnl > 0) {
             currentWinStreak++;
             currentLoseStreak = 0;
             maxWinStreak = Math.max(maxWinStreak, currentWinStreak);
-        } else if (trade.result === 'SL HIT' || trade.result === 'LOSS') {
+        } else if (t.pnl < 0) {
             currentLoseStreak++;
             currentWinStreak = 0;
             maxLoseStreak = Math.max(maxLoseStreak, currentLoseStreak);
         }
-    });
-
-    // Calculate drawdown
-    let peak = initialBalance;
-    let maxDrawdown = 0;
-    let runningBalance = initialBalance;
-
-    filteredTrades.forEach(trade => {
-        runningBalance += trade.pnl;
-        peak = Math.max(peak, runningBalance);
-        const drawdown = ((peak - runningBalance) / peak) * 100;
-        maxDrawdown = Math.max(maxDrawdown, drawdown);
-    });
-
-    // Calculate avg R:R
-    const totalRR = filteredTrades.reduce((sum, t) => sum + (parseFloat(t.rrRatio) || 0), 0);
-    const avgRR = totalTrades > 0 ? (totalRR / totalTrades).toFixed(2) : 0;
-
-    // Calculate total P&L
-    const totalPnL = filteredTrades.reduce((sum, t) => sum + t.pnl, 0);
-    const pnlPercent = initialBalance > 0 ? ((totalPnL / initialBalance) * 100).toFixed(2) : 0;
-
-    // Update UI
-    document.getElementById('sp-total-trades').textContent = totalTrades;
-    document.getElementById('sp-win-rate').textContent = winRate + '%';
-    document.getElementById('sp-lose-streak').textContent = maxLoseStreak;
-    document.getElementById('sp-win-streak').textContent = maxWinStreak;
-    document.getElementById('sp-drawdown').textContent = maxDrawdown.toFixed(2) + '%';
-    document.getElementById('sp-avg-rr').textContent = avgRR;
-
-    // Update P&L with color
-    const pnlAmountEl = document.getElementById('sp-pnl-amount');
-    const pnlPercentEl = document.getElementById('sp-pnl-percent');
-    pnlAmountEl.textContent = '$' + totalPnL.toFixed(2);
-    pnlPercentEl.textContent = '(' + (pnlPercent >= 0 ? '+' : '') + pnlPercent + '%)';
-
-    if (totalPnL >= 0) {
-        pnlAmountEl.style.color = 'var(--success)';
-        pnlPercentEl.style.color = 'var(--success)';
-    } else {
-        pnlAmountEl.style.color = 'var(--danger)';
-        pnlPercentEl.style.color = 'var(--danger)';
-    }
-}
-
-// Render Backtest Summary (Legacy - now using updateStrategyPerformance)
-function renderBacktestSummary() {
-    updateStrategyPerformance();
-}
-
-// Filter Backtest Trades
-function filterBacktestTrades() {
-    renderBacktestTrades();
-}
-
-// Render Backtest Trades
-function renderBacktestTrades() {
-    const container = document.getElementById('backtestTradeList');
-    if (!container) return;
-
-    let trades = journalData.filter(t => t.isBacktest);
-
-    // Apply filters
-    const strategyFilter = document.getElementById('bt-filter-strategy')?.value;
-    const resultFilter = document.getElementById('bt-filter-result')?.value;
-
-    if (strategyFilter && strategyFilter !== 'all') {
-        trades = trades.filter(t => t.strategyId == strategyFilter);
-    }
-
-    if (resultFilter && resultFilter !== 'all') {
-        if (resultFilter === 'WIN') {
-            trades = trades.filter(t => t.result === 'WIN' || t.result === 'TP HIT');
-        } else if (resultFilter === 'LOSS') {
-            trades = trades.filter(t => t.result === 'LOSS' || t.result === 'SL HIT');
-        } else {
-            trades = trades.filter(t => t.result === resultFilter);
+        else {
+            currentWinStreak = 0;
+            currentLoseStreak = 0;
         }
+    });
+
+    // Update DOM
+    document.getElementById('bt-current-balance').textContent = formatCurrency(currentEquity);
+
+    const growthEl = document.getElementById('bt-session-growth');
+    if (growthEl) {
+        growthEl.textContent = `(${growthPercent >= 0 ? '+' : ''}${growthPercent.toFixed(1)}%)`;
+        growthEl.style.color = growthPercent >= 0 ? 'var(--success)' : 'var(--danger)';
     }
 
-    // Sort by date (newest first)
-    trades.sort((a, b) => new Date(b.date) - new Date(a.date));
+    document.getElementById('bt-session-pnl').textContent = formatCurrency(totalPnL);
+    document.getElementById('bt-session-pnl').style.color = totalPnL >= 0 ? 'var(--success)' : 'var(--danger)';
 
-    if (trades.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No backtest trades yet. Add your first trade above! 🚀</p>';
+    document.getElementById('bt-session-winrate').textContent = `${winrate}% (${wins}/${total})`;
+
+    const maxWinEl = document.getElementById('bt-max-winstreak');
+    const maxLoseEl = document.getElementById('bt-max-losestreak');
+    if (maxWinEl) maxWinEl.textContent = maxWinStreak;
+    if (maxLoseEl) maxLoseEl.textContent = maxLoseStreak;
+
+    // Total Trades count
+    const totalTradesEl = document.getElementById('bt-total-trades');
+    if (totalTradesEl) totalTradesEl.textContent = total;
+
+    // Render Charts & List
+    renderBacktestChart(filteredTrades);
+    renderBacktestPieChart(filteredTrades);
+    renderBacktestTrades(filteredTrades);
+}
+
+// Render Equity Chart (Cumulative PnL)
+let backtestChartInstance = null;
+function renderBacktestChart(trades) {
+    const ctx = document.getElementById('backtestEquityChart').getContext('2d');
+
+    // Prepare Arrays for Categorical Axis
+    const labels = ['Start'];
+    const dataValues = [0];
+
+    let runningPnL = 0;
+    const sessionTrades = trades || getFilteredBacktestData(); // Fallback if called directly
+
+    sessionTrades.forEach((t, index) => {
+        runningPnL += t.pnl;
+        labels.push(`#${index + 1}`);
+        dataValues.push(runningPnL);
+    });
+
+    if (backtestChartInstance) {
+        backtestChartInstance.destroy();
+    }
+
+    backtestChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels, // Explicit X-Axis Labels (0, 1, 2...)
+            datasets: [{
+                label: 'Cumulative PnL',
+                data: dataValues, // Y-Axis Values
+                borderColor: '#00D68F',
+                backgroundColor: 'rgba(0, 214, 143, 0.1)',
+                borderWidth: 2,
+                fill: false, // Pure line chart (no area fill)
+                tension: 0.1,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return 'PnL: ' + formatCurrency(context.raw);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: { display: true, text: 'Trade Sequence' },
+                    grid: { display: false }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: {
+                        callback: function (value) {
+                            return '$' + value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Render Pie Chart
+let backtestPieInstance = null;
+function renderBacktestPieChart(trades) {
+    const canvas = document.getElementById('backtestPieChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const wins = trades.filter(t => t.pnl > 0).length;
+    const losses = trades.filter(t => t.pnl < 0).length;
+    const be = trades.length - wins - losses;
+
+    if (backtestPieInstance) backtestPieInstance.destroy();
+
+    backtestPieInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Win', 'Loss', 'BE'],
+            datasets: [{
+                data: [wins, losses, be],
+                backgroundColor: ['#10b981', '#ef4444', '#64748b'], // Success, Danger, Muted
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+            },
+            cutout: '70%'
+        }
+    });
+}
+
+// Render Trade List
+function renderBacktestTrades(trades) {
+    const list = document.getElementById('backtestTradeList');
+    if (!list) return;
+
+    // Use passed trades OR filter
+    let displayTrades = (trades || getFilteredBacktestData()).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Fallback: If filtered is empty but global data exists
+    if (displayTrades.length === 0) {
+        if (backtestData.length > 0) {
+            list.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                <p>No trades match current filters.</p>
+                <button class="btn btn-sm btn-secondary" onclick="document.getElementById('bt-filter-method').value='all';document.getElementById('bt-filter-asset').value='all';document.getElementById('bt-filter-style').value='all';document.getElementById('bt-filter-result').value='all';renderBacktestDashboard();">Clear Filters</button>
+             </div>`;
+        } else {
+            list.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">No backtest trades yet. Start by clicking WIN/LOSS above!</div>';
+        }
         return;
     }
 
-    container.innerHTML = trades.map(trade => {
-        const tradeDate = new Date(trade.date);
-        const formattedDate = tradeDate.toLocaleDateString('id-ID', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-
-        const isWin = trade.result === 'WIN' || trade.result === 'TP HIT';
-        const isLoss = trade.result === 'LOSS' || trade.result === 'SL HIT';
-        const isPending = trade.result === 'PENDING';
-
-        let badgeClass = 'badge-pending';
-        if (isWin) badgeClass = 'badge-win';
-        if (isLoss) badgeClass = 'badge-loss';
-        if (trade.result === 'BREAKEVEN') badgeClass = 'badge-breakeven';
-
-        const emotionEmoji = {
-            'confident': '😎',
-            'calm': '😌',
-            'neutral': '😐',
-            'excited': '🤩',
-            'anxious': '😰',
-            'fearful': '😨',
-            'frustrated': '😤',
-            'greedy': '🤑',
-            'fomo': '😱'
-        };
+    list.innerHTML = displayTrades.map((t, index) => {
+        const isWin = t.pnl > 0;
+        const color = isWin ? 'var(--success)' : (t.pnl < 0 ? 'var(--danger)' : 'var(--warning)');
+        const icon = isWin ? '📈' : (t.pnl < 0 ? '📉' : '⚖️');
 
         return `
-            <div class="backtest-trade-item">
-                <div class="transaction-header">
-                    <div>
-                        <span class="backtest-badge">🔄 BACKTEST</span>
-                        <span class="badge ${badgeClass}" style="margin-left: 0.5rem;">${trade.result}</span>
-                    </div>
-                    <div class="transaction-date">${formattedDate}</div>
-                </div>
-                
-                <div class="transaction-info">
-                    <div class="info-item">
-                        <div class="info-label">Asset</div>
-                        <div class="info-value">${trade.asset}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Strategy</div>
-                        <div class="info-value">${trade.strategyName}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Direction</div>
-                        <div class="info-value">${trade.direction}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">R:R</div>
-                        <div class="info-value">1:${trade.rrRatio}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">P&L</div>
-                        <div class="info-value" style="color: ${trade.pnl >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">
-                            $${trade.pnl.toFixed(2)}
-                        </div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Emotion</div>
-                        <div class="info-value">${emotionEmoji[trade.emotion] || '😐'}</div>
-                    </div>
-                </div>
-
-                ${trade.notes ? `
-                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
-                        <div class="info-label" style="margin-bottom: 0.25rem;">Notes:</div>
-                        <div style="color: var(--text-secondary); font-size: 0.875rem;">${trade.notes}</div>
-                    </div>
-                ` : ''}
-
-                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                    <button class="btn btn-danger" onclick="deleteBacktestTrade(${trade.id})" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                        <i data-lucide="trash-2"></i> Delete
-                    </button>
+        <div class="trade-card minimalist" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="font-size: 1.25rem;">${icon}</div>
+                <div>
+                    <div style="font-weight: 600;">${t.result} <span style="font-size: 0.8rem; opacity: 0.7;">#${displayTrades.length - index}</span></div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">${t.asset} | ${t.strategyName || 'No Strat'} | ${t.style || 'Intraday'}</div>
                 </div>
             </div>
+            <div style="text-align: right;">
+                <div style="font-weight: 700; color: ${color};">${formatCurrency(t.pnl)}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Risk: $${t.risk}</div>
+            </div>
+             <button class="btn-icon-only" onclick="deleteBacktestTrade(${t.id})" style="margin-left: 1rem; color: var(--text-muted);">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
         `;
     }).join('');
 
-    // Re-initialize Lucide icons
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Delete Backtest Trade
 function deleteBacktestTrade(id) {
     if (!confirm('Delete this backtest trade?')) return;
 
-    journalData = journalData.filter(t => t.id !== id);
-    localStorage.setItem('tradingJournal', JSON.stringify(journalData));
+    backtestData = backtestData.filter(t => t.id !== id);
+    localStorage.setItem('backtestData', JSON.stringify(backtestData));
 
     showToast('Backtest trade deleted');
-    renderBacktestSummary();
-    renderBacktestTrades();
+    renderBacktestDashboard(); // Refresh all
 }
 
 // Toggle Bulk Mode (Future Enhancement)
@@ -4062,3 +4347,8 @@ function closePremiumModal() {
         toggleSidebar();
     }
 }
+
+// Initialize App
+window.addEventListener('DOMContentLoaded', () => {
+    init();
+});
